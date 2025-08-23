@@ -59,7 +59,27 @@ export function getTelegramWebApp(): TelegramWebApp | null {
 }
 
 export function isTelegramWebApp(): boolean {
-  return !!getTelegramWebApp();
+  // Multiple detection methods
+  if (typeof window === 'undefined') return false;
+  
+  // Method 1: Check for Telegram.WebApp object
+  if (window.Telegram?.WebApp) return true;
+  
+  // Method 2: Check for initData
+  if (window.Telegram?.WebApp?.initData) return true;
+  
+  // Method 3: Check user agent
+  if (navigator.userAgent.includes('TelegramWebApp')) return true;
+  
+  // Method 4: Check for Telegram-specific URL parameters
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam')) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 export function parseInitData(initData: string): Record<string, string> {

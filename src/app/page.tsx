@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { isTelegramWebApp, getTelegramWebApp } from '@/lib/telegram';
+import { getTelegramWebApp } from '@/lib/telegram';
 import UserProfile from '@/components/UserProfile';
 import GameList from '@/components/GameList';
 import RouletteGame from '@/components/RouletteGame';
 import LandingPage from '@/components/LandingPage';
+import DebugInfo from '@/components/DebugInfo';
 
 interface User {
   id: number;
@@ -51,11 +52,49 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isTelegram, setIsTelegram] = useState<boolean | null>(null);
 
-  // Check if we're in Telegram WebApp
-  const isTelegram = isTelegramWebApp();
+  // Check if we're in Telegram WebApp with better detection
+  useEffect(() => {
+    const checkTelegram = (): boolean => {
+      // Multiple ways to detect Telegram WebApp
+      const hasTelegramWebApp = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
+      const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+      const hasUserAgent = typeof window !== 'undefined' && navigator.userAgent.includes('TelegramWebApp');
+      
+      console.log('Telegram detection:', {
+        hasTelegramWebApp,
+        hasInitData,
+        hasUserAgent,
+        userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'N/A'
+      });
+
+      return hasTelegramWebApp || hasInitData || hasUserAgent;
+    };
+
+    // Check immediately
+    const telegramDetected = checkTelegram();
+    setIsTelegram(telegramDetected);
+
+    // If not detected immediately, wait a bit and check again
+    if (!telegramDetected) {
+      const timer = setTimeout(() => {
+        const retryCheck = checkTelegram();
+        setIsTelegram(retryCheck);
+        if (!retryCheck) {
+          setIsLoading(false);
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    if (telegramDetected) {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
+    if (isTelegram === null) return; // Still checking
     if (!isTelegram) {
       setIsLoading(false);
       return;
@@ -69,6 +108,11 @@ export default function Home() {
           setIsLoading(false);
           return;
         }
+
+        console.log('Initializing Telegram WebApp:', {
+          initData: webApp.initData,
+          initDataUnsafe: webApp.initDataUnsafe
+        });
 
         // Initialize Telegram WebApp
         webApp.ready();
@@ -90,6 +134,7 @@ export default function Home() {
         }
 
         const data = await response.json();
+        console.log('Auth response:', data);
         setUser(data.user);
         setCurrentGame(data.currentGame);
         
@@ -148,6 +193,18 @@ export default function Home() {
     }
   };
 
+  // Show loading state while checking Telegram
+  if (isTelegram === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Проверка платформы...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Show landing page if not in Telegram
   if (!isTelegram) {
     return <LandingPage />;
@@ -175,6 +232,12 @@ export default function Home() {
             Ошибка
           </h1>
           <p className="text-gray-600 dark:text-gray-400">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Попробовать снова
+          </button>
         </div>
       </div>
     );
@@ -222,6 +285,9 @@ export default function Home() {
           <GameList onGameSelect={handleGameSelect} />
         )}
       </div>
+      
+      {/* Debug Info */}
+      <DebugInfo />
     </div>
   );
 }
