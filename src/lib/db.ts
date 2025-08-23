@@ -15,23 +15,34 @@ export async function createOrUpdateUser(telegramUser: {
   username?: string;
   photo_url?: string;
 }) {
-  return await prisma.user.upsert({
-    where: { telegramId: telegramUser.id.toString() },
-    update: {
-      username: telegramUser.username,
-      firstName: telegramUser.first_name,
-      lastName: telegramUser.last_name,
-      photoUrl: telegramUser.photo_url,
-    },
-    create: {
-      telegramId: telegramUser.id.toString(),
-      username: telegramUser.username,
-      firstName: telegramUser.first_name,
-      lastName: telegramUser.last_name,
-      photoUrl: telegramUser.photo_url,
-      balance: 1000,
-    },
-  });
+  console.log('=== createOrUpdateUser called ===');
+  console.log('Input telegramUser:', telegramUser);
+  
+  try {
+    const result = await prisma.user.upsert({
+      where: { telegramId: telegramUser.id.toString() },
+      update: {
+        username: telegramUser.username,
+        firstName: telegramUser.first_name,
+        lastName: telegramUser.last_name,
+        photoUrl: telegramUser.photo_url,
+      },
+      create: {
+        telegramId: telegramUser.id.toString(),
+        username: telegramUser.username,
+        firstName: telegramUser.first_name,
+        lastName: telegramUser.last_name,
+        photoUrl: telegramUser.photo_url,
+        balance: 1000,
+      },
+    });
+    
+    console.log('User upsert result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error in createOrUpdateUser:', error);
+    throw error;
+  }
 }
 
 export async function getCurrentGame() {

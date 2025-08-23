@@ -5,7 +5,6 @@ import { getTelegramWebApp } from '@/lib/telegram';
 import UserProfile from '@/components/UserProfile';
 import GameList from '@/components/GameList';
 import RouletteGame from '@/components/RouletteGame';
-import LandingPage from '@/components/LandingPage';
 import DebugInfo from '@/components/DebugInfo';
 
 interface User {
@@ -130,7 +129,8 @@ export default function Home() {
         });
 
         if (!response.ok) {
-          throw new Error('Ошибка авторизации');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Ошибка авторизации');
         }
 
         const data = await response.json();
@@ -155,7 +155,7 @@ export default function Home() {
 
       } catch (error) {
         console.error('App initialization error:', error);
-        setError('Ошибка инициализации приложения');
+        setError(error instanceof Error ? error.message : 'Ошибка инициализации приложения');
       } finally {
         setIsLoading(false);
       }
@@ -205,9 +205,21 @@ export default function Home() {
     );
   }
 
-  // Show landing page if not in Telegram
+  // Show error if not in Telegram
   if (!isTelegram) {
-    return <LandingPage />;
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Приложение доступно только в Telegram
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Откройте приложение через Telegram бота
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Show loading state
