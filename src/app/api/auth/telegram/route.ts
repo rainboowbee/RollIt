@@ -48,12 +48,15 @@ export async function POST(request: NextRequest) {
     
     if (!currentGame) {
       const { prisma } = await import('@/lib/db');
-      currentGame = await prisma.game.create({
+      await prisma.game.create({
         data: {
           status: 'waiting',
           totalPool: 0,
         }
       });
+      
+      // Get the created game with bets included
+      currentGame = await getCurrentGame();
     }
 
     return NextResponse.json({
@@ -66,12 +69,12 @@ export async function POST(request: NextRequest) {
         photoUrl: user.photoUrl,
         balance: user.balance,
       },
-      currentGame: {
+      currentGame: currentGame ? {
         id: currentGame.id,
         status: currentGame.status,
         totalPool: currentGame.totalPool,
         createdAt: currentGame.createdAt,
-      }
+      } : null
     });
 
   } catch (error) {

@@ -17,14 +17,32 @@ interface User {
   balance: number;
 }
 
+interface Bet {
+  id: number;
+  amount: number;
+  createdAt: string;
+  user: {
+    id: number;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    photoUrl?: string | null;
+  };
+}
+
 interface Game {
   id: number;
   status: string;
   totalPool: number;
   createdAt: string;
-  bets: any[];
+  bets: Bet[];
   winnerId?: number | null;
-  winner?: any;
+  winner?: {
+    id: number;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
 }
 
 export default function Home() {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, Users, Trophy, Timer } from 'lucide-react';
+import { Coins, Users, Trophy } from 'lucide-react';
 import { formatBalance, getDisplayName } from '@/lib/utils';
 
 interface Bet {
