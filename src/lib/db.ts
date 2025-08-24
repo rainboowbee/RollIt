@@ -86,7 +86,7 @@ export async function getCurrentGame() {
     }
 
     // Рассчитываем общий пул
-    const totalPool = currentGame.bets.reduce((sum: number, bet: any) => sum + bet.amount, 0);
+    const totalPool = currentGame.bets.reduce((sum: number, bet: { amount: number }) => sum + bet.amount, 0);
     
     // Обновляем totalPool в базе данных если он изменился
     if (currentGame.totalPool !== totalPool) {
@@ -106,7 +106,18 @@ export async function getCurrentGame() {
   }
 }
 
-export async function createBet(userId: number, gameId: number, amount: number) {
+export async function createBet(userId: number, gameId: number, amount: number): Promise<{
+  id: number;
+  amount: number;
+  createdAt: Date;
+  user: {
+    id: number;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    photoUrl?: string | null;
+  };
+}> {
   // Check if user has enough balance
   const user = await prisma.user.findUnique({
     where: { id: userId }
@@ -125,7 +136,7 @@ export async function createBet(userId: number, gameId: number, amount: number) 
   });
 
   // Create or update bet and update user balance in transaction
-  return await prisma.$transaction(async (tx: any) => {
+  return await prisma.$transaction(async (tx: PrismaClient) => {
     let bet;
     
     if (existingBet) {
@@ -184,7 +195,16 @@ export async function createBet(userId: number, gameId: number, amount: number) 
   });
 }
 
-export async function finishGame(gameId: number) {
+export async function finishGame(gameId: number): Promise<{
+  id: number;
+  status: string;
+  createdAt: Date;
+  gameStartTime: Date;
+  finishedAt: Date | null;
+  totalPool: number;
+  commission: number;
+  winnerId: number | null;
+}> {
   const game = await prisma.game.findUnique({
     where: { id: gameId },
     include: {
@@ -212,7 +232,7 @@ export async function finishGame(gameId: number) {
   }
 
   // Calculate winner based on bet amounts (higher bet = higher chance)
-  const totalBets = game.bets.reduce((sum: number, bet: any) => sum + bet.amount, 0);
+  const totalBets = game.bets.reduce((sum: number, bet: { amount: number }) => sum + bet.amount, 0);
   let random = Math.random() * totalBets;
   
   let winner: typeof game.bets[0] | null = null;
@@ -233,7 +253,7 @@ export async function finishGame(gameId: number) {
   const prizeAmount = game.totalPool - commission;
 
   // Update winner balance and game status
-  return await prisma.$transaction(async (tx: any) => {
+  return await prisma.$transaction(async (tx: PrismaClient) => {
     // Update winner balance (winner gets the prize)
     await tx.user.update({
       where: { id: winner.userId },
