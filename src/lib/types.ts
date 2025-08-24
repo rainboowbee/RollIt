@@ -6,14 +6,14 @@ export interface User {
   lastName?: string | null;
   photoUrl?: string | null;
   balance: number;
-  createdAt: string;
+  createdAt: string | Date;
 }
 
 export interface Bet {
   id: number;
   amount: number;
-  createdAt: string;
-  winPercentage: string;
+  createdAt: string | Date;
+  winPercentage?: string;
   user: {
     id: number;
     username?: string | null;
@@ -27,8 +27,8 @@ export interface Game {
   id: number;
   status: string;
   totalPool: number;
-  createdAt: string;
-  gameStartTime?: string;
+  createdAt: string | Date;
+  gameStartTime?: string | Date;
   bets?: Bet[];
   winnerId?: number | null;
   winner?: {

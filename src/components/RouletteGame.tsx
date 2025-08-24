@@ -500,9 +500,9 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
                     <div className="font-medium text-gray-900">
                       {getDisplayName(bet.user)}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      Ставка: {formatBalance(bet.amount)} ⭐ ({bet.winPercentage}%)
-                    </div>
+                                         <div className="text-xs text-gray-500">
+                       Ставка: {formatBalance(bet.amount)} ⭐ ({bet.winPercentage || '0.0'}%)
+                     </div>
                   </div>
                 </div>
                 <div className="text-right">

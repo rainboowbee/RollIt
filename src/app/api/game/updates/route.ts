@@ -70,17 +70,47 @@ export async function GET(request: NextRequest) {
             // Рассчитываем totalPool
             const totalPool = game.bets.reduce((sum, bet) => sum + bet.amount, 0);
             
+            // Преобразуем данные игры в формат, совместимый с нашим интерфейсом
+            const processedGame: Game = {
+              id: game.id,
+              status: game.status,
+              totalPool,
+              createdAt: game.createdAt,
+              gameStartTime: game.gameStartTime,
+              bets: game.bets.map(bet => ({
+                id: bet.id,
+                amount: bet.amount,
+                createdAt: bet.createdAt,
+                winPercentage: totalPool > 0 ? ((bet.amount / totalPool) * 100).toFixed(1) : '0.0',
+                user: {
+                  id: bet.user.id,
+                  username: bet.user.username,
+                  firstName: bet.user.firstName,
+                  lastName: bet.user.lastName,
+                  photoUrl: bet.user.photoUrl,
+                }
+              })),
+              winnerId: game.winnerId,
+              winner: game.winner ? {
+                id: game.winner.id,
+                username: game.winner.username,
+                firstName: game.winner.firstName,
+                lastName: game.winner.lastName,
+              } : null,
+              timeUntilStart: 0, // Будет рассчитано на клиенте
+              gameStatus: game.status,
+              stats: {
+                totalBets: game.bets.length,
+                totalPool,
+                averageBet: game.bets.length > 0 ? Math.round(totalPool / game.bets.length) : 0,
+                minBet: game.bets.length > 0 ? Math.min(...game.bets.map(b => b.amount)) : 0,
+                maxBet: game.bets.length > 0 ? Math.max(...game.bets.map(b => b.amount)) : 0,
+              }
+            };
+            
             sendUpdate({
               type: 'game_update',
-              game: {
-                ...game,
-                totalPool,
-                // Добавляем проценты выигрыша для каждого участника
-                bets: game.bets.map(bet => ({
-                  ...bet,
-                  winPercentage: totalPool > 0 ? ((bet.amount / totalPool) * 100).toFixed(1) : '0.0'
-                }))
-              },
+              game: processedGame,
               timestamp: Date.now()
             });
           }
