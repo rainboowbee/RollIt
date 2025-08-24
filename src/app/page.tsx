@@ -85,18 +85,30 @@ export default function Home() {
         return;
       }
 
+      console.log('=== Starting initialization ===');
+      console.log('Raw init data:', initDataRaw);
+
       try {
         const res = await fetch('/api/auth/telegram', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `tma ${encodeURIComponent(initDataRaw)}`,
+            'Authorization': `tma ${initDataRaw}`,
           },
+          body: JSON.stringify({}),
         });
 
-        if (!res.ok) throw new Error('Ошибка авторизации');
+        console.log('Auth response status:', res.status);
+
+        if (!res.ok) {
+          const errorData = await res.text();
+          console.error('Auth error response:', errorData);
+          throw new Error('Ошибка авторизации');
+        }
 
         const data = await res.json();
+        console.log('Auth success data:', data);
+        
         setUser(data.user);
         setCurrentGame(data.currentGame);
 
