@@ -81,15 +81,20 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           
           try {
             // Завершаем текущую игру и создаем новую
-            await fetch('/api/game/finish', {
+            const response = await fetch('/api/game/finish', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
             });
             
-            // Обновляем данные игры
-            onBetPlaced();
+            if (response.ok) {
+              console.log('Game finished successfully');
+              // Обновляем данные игры и пользователя
+              onBetPlaced();
+            } else {
+              console.error('Failed to finish game');
+            }
           } catch (error) {
             console.error('Error finishing game:', error);
           }
@@ -173,8 +178,16 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
         throw new Error(errorData.error || 'Ошибка при размещении ставки');
       }
 
+      const data = await response.json();
+      console.log('Bet placed successfully:', data);
+      
+      // Обновляем баланс пользователя в UI
+      if (data.user && data.user.balance !== undefined) {
+        // Обновляем баланс через callback
+        onBetPlaced();
+      }
+      
       setBetAmount('');
-      onBetPlaced();
       alert('Ставка размещена успешно!');
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Ошибка при размещении ставки');

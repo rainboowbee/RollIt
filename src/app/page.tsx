@@ -135,6 +135,16 @@ export default function Home() {
         }
       })
       .catch(error => console.error('Error updating game:', error));
+      
+    // Также обновляем данные пользователя для получения актуального баланса
+    fetch(`/api/user/me?userId=${user?.id}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.user) {
+          setUser(data.user);
+        }
+      })
+      .catch(error => console.error('Error updating user:', error));
   };
 
   const handleBackToGames = () => {

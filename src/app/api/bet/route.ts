@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createBet, getCurrentGame } from '@/lib/db';
+import { createBet, getCurrentGame, prisma } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,8 +38,21 @@ export async function POST(request: NextRequest) {
     // Create bet
     const bet = await createBet(parseInt(userId), currentGame.id, amount);
 
-    // Get updated game info
+    // Get updated game info and user info
     const updatedGame = await getCurrentGame();
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: {
+        id: true,
+        telegramId: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        photoUrl: true,
+        balance: true,
+        createdAt: true,
+      }
+    });
 
     return NextResponse.json({
       bet: {
@@ -49,6 +62,7 @@ export async function POST(request: NextRequest) {
         user: bet.user,
       },
       game: updatedGame,
+      user: updatedUser, // Возвращаем обновленные данные пользователя
     });
 
   } catch (error) {

@@ -3,9 +3,11 @@ import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
+    // Получаем ID пользователя из заголовка или query параметра
+    // В реальном приложении здесь должна быть аутентификация
+    const url = new URL(request.url);
+    const userId = url.searchParams.get('userId');
+    
     if (!userId) {
       return NextResponse.json(
         { error: 'User ID is required' },
