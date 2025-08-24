@@ -56,18 +56,10 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
   const [rouletteRotation, setRouletteRotation] = useState(0);
   const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
 
-  // Проверяем, что game существует
-  if (!game) {
-    return (
-      <div className="text-center py-8">
-        <div className="text-4xl mb-4">⚠️</div>
-        <p className="text-gray-600">Игра не найдена</p>
-      </div>
-    );
-  }
-
   // Глобальный таймер игры на основе gameStartTime
   useEffect(() => {
+    if (!game) return; // Ранний возврат если game не существует
+    
     const updateTimer = () => {
       const now = new Date().getTime();
       const gameStart = new Date(game.gameStartTime).getTime();
@@ -108,17 +100,27 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
-  }, [game.gameStartTime, isGameActive, onBetPlaced]);
+  }, [game, game?.gameStartTime, isGameActive, onBetPlaced]);
 
   // Медленное вращение рулетки во время ожидания
   useEffect(() => {
-    if (!isGameActive) {
-      const interval = setInterval(() => {
-        setRouletteRotation(prev => prev + 1);
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, [isGameActive]);
+    if (!game || isGameActive) return; // Ранний возврат если game не существует или игра активна
+    
+    const interval = setInterval(() => {
+      setRouletteRotation(prev => prev + 1);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [game, isGameActive]);
+
+  // Проверяем, что game существует
+  if (!game) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-4">⚠️</div>
+        <p className="text-gray-600">Игра не найдена</p>
+      </div>
+    );
+  }
 
   const handlePlaceBet = async () => {
     if (!betAmount || isNaN(Number(betAmount))) {
