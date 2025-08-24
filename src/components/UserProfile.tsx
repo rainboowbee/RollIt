@@ -20,16 +20,6 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
   
   return (
     <div className="space-y-6">
-      {/* Header с профилем */}
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-cyan-400/30 shadow-lg shadow-cyan-400/20">
-        <div className="text-center">
-          {user.username && (
-            <p className="text-cyan-300 text-2xl font-bold">
-              @{user.username}
-            </p>
-          )}
-        </div>
-      </div>
 
       {/* Балансы */}
       <div className="grid grid-cols-2 gap-4">
@@ -52,20 +42,6 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
             <div className="text-3xl font-bold text-white mb-1">
               {(user.balance * 1.254).toFixed(0)}
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Дополнительная информация */}
-      <div className="bg-gradient-to-r from-slate-600/20 to-slate-700/20 backdrop-blur-md rounded-2xl p-6 border border-slate-400/30">
-        <div className="grid grid-cols-2 gap-6 text-center">
-          <div>
-            <p className="text-slate-400 text-sm mb-1">Telegram ID</p>
-            <p className="font-mono text-slate-200 font-medium">{user.telegramId}</p>
-          </div>
-          <div>
-            <p className="text-slate-400 text-sm mb-1">ID в системе</p>
-            <p className="font-mono text-slate-200 font-medium">#{user.id}</p>
           </div>
         </div>
       </div>
