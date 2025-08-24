@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useGameUpdates } from '@/hooks/useGameUpdates';
 import { User, Game, Bet } from '@/lib/types';
@@ -49,9 +49,9 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
 
   // Используем real-time данные или fallback на props
   const currentGame = realtimeGame || game;
-  const totalPool = realtimeTotalPool || game.totalPool;
-  const bets = realtimeBets || game.bets || [];
-  const timeUntilStart = realtimeTimeUntilStart ?? game.timeUntilStart ?? 0;
+  const totalPool = useMemo(() => realtimeTotalPool || game.totalPool, [realtimeTotalPool, game.totalPool]);
+  const bets = useMemo(() => realtimeBets || game.bets || [], [realtimeBets, game.bets]);
+  const timeUntilStart = useMemo(() => realtimeTimeUntilStart ?? game.timeUntilStart ?? 0, [realtimeTimeUntilStart, game.timeUntilStart]);
 
   // Таймер игры
   useEffect(() => {

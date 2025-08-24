@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { Game } from '@/lib/types';
 
 // Простая реализация WebSocket через Server-Sent Events (SSE)
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       const sendUpdate = (data: {
         type: string;
         gameId?: string;
-        game?: any;
+        game?: Game;
         message?: string;
         timestamp: number;
       }) => {
