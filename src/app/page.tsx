@@ -55,36 +55,34 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isTelegram, setIsTelegram] = useState<boolean | null>(null);
 
-  // Use official Telegram SDK signals
+  // Подписка на initData.user из Telegram SDK
   const initDataUser = useSignal(initData.user);
 
-  console.log('=== Home component render ===', {
+  console.log('=== Home render ===', {
     isTelegram,
     isLoading,
     hasUser: !!user,
     hasCurrentGame: !!currentGame,
-    initDataUser: initDataUser
+    initDataUser: initDataUser,
   });
 
-  // Check if we're in Telegram Mini App
+  // Проверяем среду (Telegram или нет)
   useEffect(() => {
-    console.log('=== First useEffect (checking Telegram) ===');
+    console.log('=== Checking Telegram environment ===');
+    
     const checkTelegram = async () => {
       try {
-        console.log('=== Checking Telegram Mini App environment ===');
-        console.log('Window location:', window.location.href);
-        console.log('User agent:', navigator.userAgent);
-        
-        // Use official SDK to check if we're in Telegram
+        // Используем официальный SDK для проверки
         const isInTelegram = await isTMA('complete');
         console.log('isTMA check result:', isInTelegram);
-        setIsTelegram(isInTelegram);
         
-        if (!isInTelegram) {
-          console.log('Not in Telegram environment, showing external message');
-          setIsLoading(false);
+        if (isInTelegram) {
+          console.log('Detected Telegram Mini App');
+          setIsTelegram(true);
         } else {
-          console.log('Successfully detected Telegram environment');
+          console.log('Not in Telegram environment');
+          setIsTelegram(false);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('Error checking TMA:', error);
@@ -96,53 +94,41 @@ export default function Home() {
     checkTelegram();
   }, []);
 
+  // Инициализация приложения
   useEffect(() => {
-    console.log('=== Second useEffect (initialization) ===', {
-      isTelegram,
-      isLoading,
-      hasInitDataUser: !!initDataUser
-    });
+    if (isTelegram === null) return; // ещё не определили
+    if (!isTelegram) return; // не Telegram → выходим
     
-    if (isTelegram === null) return; // Still checking
-    if (!isTelegram) {
-      setIsLoading(false);
+    // Проверяем, что initDataUser доступен
+    if (!initDataUser) {
+      console.log('Waiting for initDataUser...');
       return;
     }
 
-    console.log('=== Telegram environment confirmed, starting initialization ===');
+    console.log('=== Starting initialization with Telegram data ===');
+    console.log('InitDataUser:', initDataUser);
 
-    const initializeApp = async () => {
+    let interval: NodeJS.Timeout;
+
+    const initApp = async () => {
       try {
-        console.log('=== Initializing RollIt App in Telegram ===');
-        console.log('Init data user:', initDataUser);
-
-        // Wait for init data user to be available
-        if (!initDataUser) {
-          console.log('Waiting for init data user...');
-          return;
-        }
-
-        console.log('Starting authentication...');
-        
-        // Get raw init data using the official SDK method
         const initDataRaw = retrieveRawInitData();
-        console.log('Raw init data:', initDataRaw);
-        
         if (!initDataRaw) {
-          console.error('No raw init data available');
           setError('Не удалось получить данные инициализации');
           setIsLoading(false);
           return;
         }
-        
-        // Authenticate user using raw init data in Authorization header
+
+        console.log('Raw init data:', initDataRaw);
+
+        // Авторизация
         const response = await fetch('/api/auth/telegram', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `tma ${initDataRaw}`
+            'Authorization': `tma ${initDataRaw}`,
           },
-          body: JSON.stringify({}), // Empty body since we send data in header
+          body: JSON.stringify({}),
         });
 
         if (!response.ok) {
@@ -152,74 +138,39 @@ export default function Home() {
 
         const data = await response.json();
         console.log('Auth response:', data);
+
         setUser(data.user);
         setCurrentGame(data.currentGame);
-        
-        // Set up polling for game updates
-        const interval = setInterval(async () => {
+
+        // Запускаем обновление текущей игры
+        interval = setInterval(async () => {
           try {
             const gameResponse = await fetch('/api/game/current');
             if (gameResponse.ok) {
               const gameData = await gameResponse.json();
               setCurrentGame(gameData.game);
             }
-          } catch (error) {
-            console.error('Game update error:', error);
+          } catch (err) {
+            console.error('Game update error:', err);
           }
-        }, 5000); // Update every 5 seconds
-
-        return () => clearInterval(interval);
-
-      } catch (error) {
-        console.error('App initialization error:', error);
-        setError(error instanceof Error ? error.message : 'Ошибка инициализации приложения');
+        }, 5000);
+      } catch (err) {
+        console.error('Init error:', err);
+        setError(err instanceof Error ? err.message : 'Ошибка инициализации приложения');
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Initialize when we have the required data
-    if (initDataUser) {
-      console.log('Init data user available, starting initialization...');
-      initializeApp();
-    } else {
-      console.log('Init data user not available yet, waiting...');
-      // Set up a watcher for when init data user becomes available
-      const checkInitData = setInterval(() => {
-        console.log('Checking init data user...', {
-          hasInitDataUser: !!initDataUser,
-          initDataUser: initDataUser
-        });
-        
-        if (initDataUser) {
-          console.log('Init data user now available, starting initialization...');
-          clearInterval(checkInitData);
-          initializeApp();
-        }
-      }, 500);
-      
-      // Cleanup after 10 seconds
-      setTimeout(() => {
-        clearInterval(checkInitData);
-        if (!initDataUser) {
-          console.error('Init data user not available after timeout');
-          setError('Не удалось получить данные пользователя');
-          setIsLoading(false);
-        }
-      }, 10000);
-    }
+    initApp();
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isTelegram, initDataUser]);
 
-  const handleGameSelect = (gameId: string) => {
-    setSelectedGame(gameId);
-  };
-
-  const handleBackToGames = () => {
-    setSelectedGame(null);
-  };
-
+  // Обновление данных после ставки
   const handleBetPlaced = async () => {
-    // Refresh user data and current game
     try {
       if (user) {
         const userResponse = await fetch(`/api/user/me?userId=${user.id}`);
@@ -239,7 +190,7 @@ export default function Home() {
     }
   };
 
-  // Show loading state while checking Telegram
+  // UI
   if (isTelegram === null) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -251,7 +202,6 @@ export default function Home() {
     );
   }
 
-  // Show error if not in Telegram
   if (!isTelegram) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -268,7 +218,6 @@ export default function Home() {
     );
   }
 
-  // Show loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -280,7 +229,6 @@ export default function Home() {
     );
   }
 
-  // Show error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -290,10 +238,7 @@ export default function Home() {
             Ошибка
           </h1>
           <p className="text-gray-600 dark:text-gray-400">{error}</p>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="mt-4"
-          >
+          <Button onClick={() => window.location.reload()} className="mt-4">
             Попробовать снова
           </Button>
         </div>
@@ -301,7 +246,7 @@ export default function Home() {
     );
   }
 
-  // Show main app
+  // Основной UI
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-6 max-w-md">
@@ -323,10 +268,7 @@ export default function Home() {
         {selectedGame === 'roulette' && currentGame ? (
           <div>
             <Section header="Игра в рулетку">
-              <Button 
-                onClick={handleBackToGames}
-                className="mb-4"
-              >
+              <Button onClick={() => setSelectedGame(null)} className="mb-4">
                 ← Назад к играм
               </Button>
             </Section>
@@ -337,7 +279,7 @@ export default function Home() {
             />
           </div>
         ) : (
-          <GameList onGameSelect={handleGameSelect} />
+          <GameList onGameSelect={setSelectedGame} />
         )}
       </div>
 
