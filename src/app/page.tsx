@@ -62,13 +62,20 @@ export default function Home() {
   useEffect(() => {
     const checkTelegram = async () => {
       try {
+        console.log('=== Checking Telegram Mini App environment ===');
+        console.log('Window location:', window.location.href);
+        console.log('User agent:', navigator.userAgent);
+        
         // Use official SDK to check if we're in Telegram
         const isInTelegram = await isTMA('complete');
         console.log('isTMA check result:', isInTelegram);
         setIsTelegram(isInTelegram);
         
         if (!isInTelegram) {
+          console.log('Not in Telegram environment, showing external message');
           setIsLoading(false);
+        } else {
+          console.log('Successfully detected Telegram environment');
         }
       } catch (error) {
         console.error('Error checking TMA:', error);

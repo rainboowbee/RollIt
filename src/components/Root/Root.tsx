@@ -21,10 +21,15 @@ function RootInner({ children }: PropsWithChildren) {
 
   // Log user data for debugging
   useEffect(() => {
+    console.log('=== RootInner mounted ===');
+    console.log('Launch params:', lp);
+    console.log('Is dark theme:', isDark);
+    console.log('Init data user:', initDataUser);
+    
     if (initDataUser) {
-      console.log('Telegram user data:', initDataUser);
+      console.log('Telegram user data received:', initDataUser);
     }
-  }, [initDataUser]);
+  }, [initDataUser, lp, isDark]);
 
   return (
     <AppRoot

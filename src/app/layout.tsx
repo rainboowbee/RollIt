@@ -6,7 +6,10 @@ import "./globals.css";
 
 // Initialize mock environment for development
 if (process.env.NODE_ENV === 'development') {
-  import('@/mockEnv').then(({ mockEnv }) => mockEnv());
+  // Initialize mock environment immediately
+  import('@/mockEnv').then(({ mockEnv }) => {
+    mockEnv().catch(console.error);
+  });
 }
 
 export const metadata: Metadata = {
