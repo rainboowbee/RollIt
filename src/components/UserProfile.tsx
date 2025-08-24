@@ -23,11 +23,8 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
       {/* Header с профилем */}
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-cyan-400/30 shadow-lg shadow-cyan-400/20">
         <div className="text-center">
-          <h3 className="text-2xl font-bold text-white mb-2">
-            {displayName}
-          </h3>
           {user.username && (
-            <p className="text-cyan-300 text-lg font-medium">
+            <p className="text-cyan-300 text-2xl font-bold">
               @{user.username}
             </p>
           )}
