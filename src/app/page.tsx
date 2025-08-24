@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { isTMA, retrieveRawInitData } from '@telegram-apps/sdk-react';
-import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
+import { Button } from '@telegram-apps/telegram-ui';
 
 import UserProfile from '@/components/UserProfile';
 import GameList from '@/components/GameList';

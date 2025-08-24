@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Section, Cell, Button, Avatar } from '@telegram-apps/telegram-ui';
+import { Button, Avatar } from '@telegram-apps/telegram-ui';
 
 interface User {
   id: number;
