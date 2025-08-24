@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { initData, useSignal, isTMA, retrieveRawInitData } from '@telegram-apps/sdk-react';
+import { isTMA, retrieveRawInitData } from '@telegram-apps/sdk-react';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 
 import UserProfile from '@/components/UserProfile';
@@ -55,26 +55,15 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isTelegram, setIsTelegram] = useState<boolean | null>(null);
 
-  // В ЭТОЙ БИБЛИОТЕКЕ useSignal возвращает значение (User | undefined), а не объект с .value
-  const initDataUser = useSignal(initData.user); // тип: any | undefined (пользователь из Telegram initData)
-
-  console.log('=== Home render ===', {
-    isTelegram,
-    isLoading,
-    hasUser: !!user,
-    hasCurrentGame: !!currentGame,
-    initDataUser, // уже значение, не .value
-  });
-
-  // Проверка среды (внутри Telegram или нет)
+  // Проверяем, что мы в Telegram Mini App
   useEffect(() => {
     const checkTelegram = async () => {
       try {
-        const isInTelegram = await isTMA('complete');
-        setIsTelegram(isInTelegram);
-        if (!isInTelegram) setIsLoading(false);
-      } catch (e) {
-        console.error('Error checking TMA:', e);
+        const inTMA = await isTMA('complete');
+        setIsTelegram(inTMA);
+        if (!inTMA) setIsLoading(false);
+      } catch (err) {
+        console.error('Telegram check error:', err);
         setIsTelegram(false);
         setIsLoading(false);
       }
@@ -82,61 +71,50 @@ export default function Home() {
     checkTelegram();
   }, []);
 
-  // Инициализация приложения
+  // Инициализация приложения (авторизация и загрузка текущей игры)
   useEffect(() => {
-    if (isTelegram === null) return;     // ещё не знаем среду
-    if (!isTelegram) return;             // не Telegram → выходим
-    if (!initDataUser) return;           // ждём, пока SDK даст пользователя
+    if (isTelegram !== true) return;
 
-    let interval: ReturnType<typeof setInterval> | null = null;
+    let gameInterval: ReturnType<typeof setInterval>;
 
     const initApp = async () => {
-      try {
-        const initDataRaw = retrieveRawInitData();
-        if (!initDataRaw) {
-          setError('Не удалось получить данные инициализации');
-          setIsLoading(false);
-          return;
-        }
+      const initDataRaw = retrieveRawInitData();
+      if (!initDataRaw) {
+        setError('Не удалось получить данные пользователя Telegram');
+        setIsLoading(false);
+        return;
+      }
 
-        const response = await fetch('/api/auth/telegram', {
+      try {
+        const res = await fetch('/api/auth/telegram', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            // ВАЖНО: кодируем initDataRaw, а на сервере делаем decodeURIComponent
             'Authorization': `tma ${encodeURIComponent(initDataRaw)}`,
           },
         });
 
-        if (!response.ok) {
-          // подстрахуемся от не-JSON ответа
-          let msg = 'Ошибка авторизации';
-          try {
-            const errorData = await response.json();
-            msg = errorData?.error || msg;
-          } catch {}
-          throw new Error(msg);
-        }
+        if (!res.ok) throw new Error('Ошибка авторизации');
 
-        const data = await response.json();
+        const data = await res.json();
         setUser(data.user);
         setCurrentGame(data.currentGame);
 
-        // Пуллим состояние игры каждые 5 сек
-        interval = setInterval(async () => {
+        // Запуск пуллинга текущей игры каждые 5 секунд
+        gameInterval = setInterval(async () => {
           try {
-            const gameResponse = await fetch('/api/game/current');
-            if (gameResponse.ok) {
-              const gameData = await gameResponse.json();
+            const gameRes = await fetch('/api/game/current');
+            if (gameRes.ok) {
+              const gameData = await gameRes.json();
               setCurrentGame(gameData.game);
             }
           } catch (err) {
-            console.error('Game update error:', err);
+            console.error('Game polling error:', err);
           }
         }, 5000);
       } catch (err) {
-        console.error('Init error:', err);
-        setError(err instanceof Error ? err.message : 'Ошибка инициализации приложения');
+        console.error('Initialization error:', err);
+        setError(err instanceof Error ? err.message : 'Ошибка инициализации');
       } finally {
         setIsLoading(false);
       }
@@ -145,27 +123,27 @@ export default function Home() {
     initApp();
 
     return () => {
-      if (interval) clearInterval(interval);
+      if (gameInterval) clearInterval(gameInterval);
     };
-  }, [isTelegram, initDataUser]);
+  }, [isTelegram]);
 
   // Обновление данных после ставки
   const handleBetPlaced = async () => {
     try {
       if (user) {
-        const userResponse = await fetch(`/api/user/me?userId=${user.id}`);
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
+        const userRes = await fetch(`/api/user/me?userId=${user.id}`);
+        if (userRes.ok) {
+          const userData = await userRes.json();
           setUser(userData.user);
         }
       }
-      const gameResponse = await fetch('/api/game/current');
-      if (gameResponse.ok) {
-        const gameData = await gameResponse.json();
+      const gameRes = await fetch('/api/game/current');
+      if (gameRes.ok) {
+        const gameData = await gameRes.json();
         setCurrentGame(gameData.game);
       }
-    } catch (e) {
-      console.error('Refresh error:', e);
+    } catch (err) {
+      console.error('Refresh error:', err);
     }
   };
 
