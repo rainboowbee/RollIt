@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Game } from '@/lib/types';
 
 interface GameUpdate {
   type: 'connected' | 'game_update' | 'error';
   gameId?: string;
-  game?: any;
+  game?: Game;
   message?: string;
   timestamp: number;
 }

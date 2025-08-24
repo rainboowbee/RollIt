@@ -2,17 +2,7 @@
 
 import { useState } from 'react';
 import { initData, useSignal, retrieveRawInitData } from '@telegram-apps/sdk-react';
-
-interface User {
-  id: number;
-  telegramId: string;
-  username?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  photoUrl?: string | null;
-  balance: number;
-  createdAt: string;
-}
+import { User } from '@/lib/types';
 
 interface DebugPanelProps {
   user?: User | null;

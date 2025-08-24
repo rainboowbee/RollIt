@@ -1,14 +1,6 @@
 'use client';
 
-interface User {
-  id: number;
-  telegramId: string;
-  username?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  photoUrl?: string | null;
-  balance: number;
-}
+import { User } from '@/lib/types';
 
 interface UserProfileProps {
   user: User;

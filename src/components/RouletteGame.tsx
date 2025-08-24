@@ -3,55 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useGameUpdates } from '@/hooks/useGameUpdates';
-
-interface User {
-  id: number;
-  telegramId: string;
-  username?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  photoUrl?: string | null;
-  balance: number;
-}
-
-interface Bet {
-  id: number;
-  amount: number;
-  createdAt: string;
-  winPercentage: string;
-  user: {
-    id: number;
-    username?: string | null;
-    firstName?: string | null;
-    lastName?: string | null;
-    photoUrl?: string | null;
-  };
-}
-
-interface Game {
-  id: number;
-  status: string;
-  totalPool: number;
-  createdAt: string;
-  gameStartTime: string;
-  bets: Bet[];
-  winnerId?: number | null;
-  winner?: {
-    id: number;
-    username?: string | null;
-    firstName?: string | null;
-    lastName?: string | null;
-  } | null;
-  timeUntilStart: number;
-  gameStatus: string;
-  stats: {
-    totalBets: number;
-    totalPool: number;
-    averageBet: number;
-    minBet: number;
-    maxBet: number;
-  };
-}
+import { User, Game, Bet } from '@/lib/types';
 
 interface RouletteGameProps {
   game: Game;
@@ -65,11 +17,16 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
   const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
   const [isGameActive, setIsGameActive] = useState(false);
   const [rouletteRotation, setRouletteRotation] = useState(0);
-  const [winner, setWinner] = useState<any>(null);
+  const [winner, setWinner] = useState<{
+    id: number;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    photoUrl?: string | null;
+  } | null>(null);
 
   // Используем WebSocket для real-time обновлений
   const {
-    isConnected,
     game: realtimeGame,
     totalPool: realtimeTotalPool,
     bets: realtimeBets,
@@ -93,8 +50,8 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
   // Используем real-time данные или fallback на props
   const currentGame = realtimeGame || game;
   const totalPool = realtimeTotalPool || game.totalPool;
-  const bets = realtimeBets || game.bets;
-  const timeUntilStart = realtimeTimeUntilStart ?? game.timeUntilStart;
+  const bets = realtimeBets || game.bets || [];
+  const timeUntilStart = realtimeTimeUntilStart ?? game.timeUntilStart ?? 0;
 
   // Таймер игры
   useEffect(() => {

@@ -21,7 +21,13 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const sendUpdate = (data: any) => {
+      const sendUpdate = (data: {
+        type: string;
+        gameId?: string;
+        game?: any;
+        message?: string;
+        timestamp: number;
+      }) => {
         const event = `data: ${JSON.stringify(data)}\n\n`;
         controller.enqueue(new TextEncoder().encode(event));
       };

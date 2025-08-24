@@ -1,17 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-interface User {
-  id: number;
-  telegramId: string;
-  username?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  photoUrl?: string | null;
-  balance: number;
-  createdAt: string;
-}
+import { User } from '@/lib/types';
 
 interface UsersListProps {
   onBack: () => void;

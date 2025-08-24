@@ -6,35 +6,7 @@ import RouletteGame from '@/components/RouletteGame';
 import UsersList from '@/components/UsersList';
 import UserProfile from '@/components/UserProfile';
 import DebugPanel from '@/components/DebugPanel';
-
-interface User {
-  id: number;
-  telegramId: string;
-  username?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  photoUrl?: string | null;
-  balance: number;
-  createdAt: string;
-}
-
-interface Bet {
-  id: number;
-  amount: number;
-  createdAt: string;
-  user: User;
-}
-
-interface Game {
-  id: number;
-  status: string;
-  totalPool: number;
-  createdAt: string;
-  gameStartTime: string;
-  bets: Bet[];
-  winnerId?: number | null;
-  winner?: User | null;
-}
+import { User, Game } from '@/lib/types';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -102,12 +74,22 @@ export default function Home() {
       
       // Проверяем структуру currentGame
       if (data.currentGame && typeof data.currentGame === 'object') {
-        // Убеждаемся, что bets всегда является массивом
-        const gameWithBets = {
+        // Убеждаемся, что bets всегда является массивом и добавляем недостающие поля
+        const gameWithDefaults = {
           ...data.currentGame,
-          bets: Array.isArray(data.currentGame.bets) ? data.currentGame.bets : []
+          bets: Array.isArray(data.currentGame.bets) ? data.currentGame.bets : [],
+          gameStartTime: data.currentGame.gameStartTime || new Date().toISOString(),
+          timeUntilStart: data.currentGame.timeUntilStart || 0,
+          gameStatus: data.currentGame.gameStatus || data.currentGame.status,
+          stats: data.currentGame.stats || {
+            totalBets: 0,
+            totalPool: data.currentGame.totalPool || 0,
+            averageBet: 0,
+            minBet: 0,
+            maxBet: 0
+          }
         };
-        setCurrentGame(gameWithBets);
+        setCurrentGame(gameWithDefaults);
       } else {
         setCurrentGame(null);
       }
@@ -126,12 +108,22 @@ export default function Home() {
       .then(response => response.json())
       .then(data => {
         if (data.game && typeof data.game === 'object') {
-          // Убеждаемся, что bets всегда является массивом
-          const gameWithBets = {
+          // Убеждаемся, что bets всегда является массивом и добавляем недостающие поля
+          const gameWithDefaults = {
             ...data.game,
-            bets: Array.isArray(data.game.bets) ? data.game.bets : []
+            bets: Array.isArray(data.game.bets) ? data.game.bets : [],
+            gameStartTime: data.game.gameStartTime || new Date().toISOString(),
+            timeUntilStart: data.game.timeUntilStart || 0,
+            gameStatus: data.game.gameStatus || data.game.status,
+            stats: data.game.stats || {
+              totalBets: 0,
+              totalPool: data.game.totalPool || 0,
+              averageBet: 0,
+              minBet: 0,
+              maxBet: 0
+            }
           };
-          setCurrentGame(gameWithBets);
+          setCurrentGame(gameWithDefaults);
         }
       })
       .catch(error => console.error('Error updating game:', error));
