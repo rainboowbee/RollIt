@@ -105,7 +105,7 @@ export default function UsersList({ onBack }: UsersListProps) {
               <div className="relative">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 p-0.5">
                   <Avatar
-                    size={44}
+                    size={40}
                     src={user.photoUrl || undefined}
                     className="w-full h-full rounded-full"
                   />
