@@ -59,8 +59,18 @@ export default function Home() {
   const initDataUser = useSignal(initData.user);
   const launchParams = useLaunchParams();
 
+  console.log('=== Home component render ===', {
+    isTelegram,
+    isLoading,
+    hasUser: !!user,
+    hasCurrentGame: !!currentGame,
+    launchParamsAvailable: !!launchParams.tgWebAppData,
+    launchParams: launchParams
+  });
+
   // Check if we're in Telegram Mini App
   useEffect(() => {
+    console.log('=== First useEffect (checking Telegram) ===');
     const checkTelegram = async () => {
       try {
         console.log('=== Checking Telegram Mini App environment ===');
@@ -89,6 +99,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    console.log('=== Second useEffect (initialization) ===', {
+      isTelegram,
+      isLoading,
+      hasLaunchParams: !!launchParams.tgWebAppData
+    });
+    
     if (isTelegram === null) return; // Still checking
     if (!isTelegram) {
       setIsLoading(false);
@@ -98,6 +114,7 @@ export default function Home() {
     console.log('=== Telegram environment confirmed, starting initialization ===');
     console.log('Current launch params:', launchParams);
     console.log('tgWebAppData available:', !!launchParams.tgWebAppData);
+    console.log('tgWebAppData value:', launchParams.tgWebAppData);
 
     const initializeApp = async () => {
       try {
@@ -166,12 +183,17 @@ export default function Home() {
       console.log('Launch params not available yet, waiting...');
       // Set up a watcher for when launch params become available
       const checkParams = setInterval(() => {
+        console.log('Checking launch params...', {
+          hasTgWebAppData: !!launchParams.tgWebAppData,
+          tgWebAppData: launchParams.tgWebAppData
+        });
+        
         if (launchParams.tgWebAppData) {
           console.log('Launch params now available, starting initialization...');
           clearInterval(checkParams);
           initializeApp();
         }
-      }, 100);
+      }, 500);
       
       // Cleanup after 10 seconds
       setTimeout(() => {
