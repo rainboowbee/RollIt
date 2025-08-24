@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { initData, useSignal, isTMA } from '@telegram-apps/sdk-react';
+import { initData, useSignal, isTMA, useLaunchParams } from '@telegram-apps/sdk-react';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 
 import UserProfile from '@/components/UserProfile';
 import GameList from '@/components/GameList';
 import RouletteGame from '@/components/RouletteGame';
+import DebugPanel from '@/components/DebugPanel';
 
 interface User {
   id: number;
@@ -56,7 +57,7 @@ export default function Home() {
 
   // Use official Telegram SDK signals
   const initDataUser = useSignal(initData.user);
-  const initDataRaw = useSignal(initData.raw);
+  const launchParams = useLaunchParams();
 
   // Check if we're in Telegram Mini App
   useEffect(() => {
@@ -94,28 +95,33 @@ export default function Home() {
       return;
     }
 
+    console.log('=== Telegram environment confirmed, starting initialization ===');
+    console.log('Current launch params:', launchParams);
+    console.log('tgWebAppData available:', !!launchParams.tgWebAppData);
+
     const initializeApp = async () => {
       try {
         console.log('=== Initializing RollIt App in Telegram ===');
         console.log('Init data user:', initDataUser);
-        console.log('Init data raw:', initDataRaw);
+        console.log('Launch params:', launchParams);
+        console.log('tgWebAppData:', launchParams.tgWebAppData);
 
-        // Wait for init data to be available
-        if (!initDataUser || !initDataRaw) {
-          console.log('Waiting for init data...');
+        // Wait for launch params to be available
+        if (!launchParams.tgWebAppData) {
+          console.log('Waiting for launch params...');
           return;
         }
 
         console.log('Starting authentication...');
         
-        // Authenticate user
+        // Authenticate user using tgWebAppData from launch params
         const response = await fetch('/api/auth/telegram', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            initData: initDataRaw,
+            initData: launchParams.tgWebAppData,
           }),
         });
 
@@ -153,10 +159,31 @@ export default function Home() {
     };
 
     // Initialize when we have the required data
-    if (initDataUser && initDataRaw) {
+    if (launchParams.tgWebAppData) {
+      console.log('Launch params available, starting initialization...');
       initializeApp();
+    } else {
+      console.log('Launch params not available yet, waiting...');
+      // Set up a watcher for when launch params become available
+      const checkParams = setInterval(() => {
+        if (launchParams.tgWebAppData) {
+          console.log('Launch params now available, starting initialization...');
+          clearInterval(checkParams);
+          initializeApp();
+        }
+      }, 100);
+      
+      // Cleanup after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkParams);
+        if (!launchParams.tgWebAppData) {
+          console.error('Launch params not available after timeout');
+          setError('Не удалось получить данные Telegram WebApp');
+          setIsLoading(false);
+        }
+      }, 10000);
     }
-  }, [isTelegram, initDataUser, initDataRaw]);
+  }, [isTelegram, initDataUser, launchParams.tgWebAppData]);
 
   const handleGameSelect = (gameId: string) => {
     setSelectedGame(gameId);
@@ -288,6 +315,9 @@ export default function Home() {
           <GameList onGameSelect={handleGameSelect} />
         )}
       </div>
+
+      {/* Debug Panel */}
+      <DebugPanel />
     </div>
   );
 }
