@@ -69,6 +69,27 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
         setIsGameActive(true);
         // Запускаем быстрое вращение рулетки
         setRouletteRotation(prev => prev + 3600); // 10 полных оборотов
+        
+        // Через 5 секунд (время вращения) создаем новую игру
+        setTimeout(async () => {
+          setIsGameActive(false);
+          setRouletteRotation(0);
+          
+          try {
+            // Завершаем текущую игру и создаем новую
+            await fetch('/api/game/finish', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            // Обновляем данные игры
+            onBetPlaced();
+          } catch (error) {
+            console.error('Error finishing game:', error);
+          }
+        }, 5000);
       }
     };
 
@@ -77,7 +98,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
-  }, [game.gameStartTime, isGameActive]);
+  }, [game.gameStartTime, isGameActive, onBetPlaced]);
 
   // Медленное вращение рулетки во время ожидания
   useEffect(() => {
@@ -115,6 +136,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          userId: currentUser.id,
           gameId: game.id,
           amount,
         }),

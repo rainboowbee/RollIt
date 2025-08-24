@@ -3,11 +3,11 @@ import { createBet, getCurrentGame } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, amount } = await request.json();
+    const { userId, gameId, amount } = await request.json();
 
-    if (!userId || !amount) {
+    if (!userId || !gameId || !amount) {
       return NextResponse.json(
-        { error: 'User ID and amount are required' },
+        { error: 'User ID, Game ID and amount are required' },
         { status: 400 }
       );
     }
