@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useGameUpdates } from '@/hooks/useGameUpdates';
 
 interface User {
   id: number;
@@ -17,6 +18,7 @@ interface Bet {
   id: number;
   amount: number;
   createdAt: string;
+  winPercentage: string;
   user: {
     id: number;
     username?: string | null;
@@ -40,6 +42,15 @@ interface Game {
     firstName?: string | null;
     lastName?: string | null;
   } | null;
+  timeUntilStart: number;
+  gameStatus: string;
+  stats: {
+    totalBets: number;
+    totalPool: number;
+    averageBet: number;
+    minBet: number;
+    maxBet: number;
+  };
 }
 
 interface RouletteGameProps {
@@ -51,23 +62,46 @@ interface RouletteGameProps {
 export default function RouletteGame({ game, currentUser, onBetPlaced }: RouletteGameProps) {
   const [betAmount, setBetAmount] = useState('');
   const [isPlacingBet, setIsPlacingBet] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
   const [isGameActive, setIsGameActive] = useState(false);
   const [rouletteRotation, setRouletteRotation] = useState(0);
-  const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
+  const [winner, setWinner] = useState<any>(null);
 
-  // Глобальный таймер игры на основе gameStartTime
+  // Используем WebSocket для real-time обновлений
+  const {
+    isConnected,
+    game: realtimeGame,
+    totalPool: realtimeTotalPool,
+    bets: realtimeBets,
+    timeUntilStart: realtimeTimeUntilStart,
+    error: connectionError
+  } = useGameUpdates({
+    gameId: game.id,
+    onUpdate: (update) => {
+      if (update.type === 'game_update') {
+        console.log('Real-time game update received');
+        // Обновляем состояние игры
+        onBetPlaced();
+      }
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+    },
+    enabled: true
+  });
+
+  // Используем real-time данные или fallback на props
+  const currentGame = realtimeGame || game;
+  const totalPool = realtimeTotalPool || game.totalPool;
+  const bets = realtimeBets || game.bets;
+  const timeUntilStart = realtimeTimeUntilStart ?? game.timeUntilStart;
+
+  // Таймер игры
   useEffect(() => {
-    if (!game) return; // Ранний возврат если game не существует
+    if (!currentGame) return;
     
     const updateTimer = () => {
-      const now = new Date().getTime();
-      const gameStart = new Date(game.gameStartTime).getTime();
-      const timeUntilStart = Math.max(0, Math.floor((gameStart - now) / 1000));
-      
-      setTimeLeft(timeUntilStart);
-      
-      if (timeUntilStart === 0 && !isGameActive) {
+      if (timeUntilStart <= 0 && !isGameActive) {
         console.log('Game timer expired, starting game!');
         setIsGameActive(true);
         // Запускаем быстрое вращение рулетки
@@ -89,7 +123,18 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
             });
             
             if (response.ok) {
-              console.log('Game finished successfully');
+              const data = await response.json();
+              console.log('Game finished successfully:', data);
+              
+              // Показываем победителя
+              if (data.finishedGame.winnerId) {
+                const winningBet = bets.find((bet: Bet) => bet.user.id === data.finishedGame.winnerId);
+                if (winningBet) {
+                  setWinner(winningBet.user);
+                  setTimeout(() => setWinner(null), 5000); // Скрываем через 5 секунд
+                }
+              }
+              
               // Обновляем данные игры и пользователя
               onBetPlaced();
             } else {
@@ -107,21 +152,21 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
-  }, [game?.gameStartTime, isGameActive, onBetPlaced]);
+  }, [timeUntilStart, isGameActive, onBetPlaced, bets, currentGame]);
 
   // Медленное вращение рулетки во время ожидания
   useEffect(() => {
-    if (!game || isGameActive) return; // Ранний возврат если game не существует или игра активна
+    if (!currentGame || isGameActive) return;
     
     const interval = setInterval(() => {
       setRouletteRotation(prev => prev + 1);
     }, 100);
     return () => clearInterval(interval);
-  }, [game, isGameActive]);
+  }, [currentGame, isGameActive]);
 
   // Быстрое вращение рулетки во время активной игры
   useEffect(() => {
-    if (!game || !isGameActive) return;
+    if (!currentGame || !isGameActive) return;
     
     console.log('Starting fast roulette rotation');
     const interval = setInterval(() => {
@@ -129,10 +174,10 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     }, 50); // Каждые 50мс для плавности
     
     return () => clearInterval(interval);
-  }, [game, isGameActive]);
+  }, [currentGame, isGameActive]);
 
   // Проверяем, что game существует
-  if (!game) {
+  if (!currentGame) {
     return (
       <div className="text-center py-8">
         <div className="text-4xl mb-4">⚠️</div>
@@ -161,14 +206,15 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
 
     setIsPlacingBet(true);
     try {
-      const response = await fetch('/api/bet', {
+      // Используем новый API endpoint для присоединения к игре
+      const response = await fetch('/api/game/join', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           userId: currentUser.id,
-          gameId: game.id,
+          gameId: currentGame.id,
           amount,
         }),
       });
@@ -211,9 +257,9 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
   };
 
   // Расчет процента выигрыша для текущего пользователя
-  const currentUserBet = game.bets?.find(bet => bet.user.id === currentUser.id);
-  const currentUserWinPercentage = currentUserBet && game.totalPool > 0
-    ? ((currentUserBet.amount / game.totalPool) * 100).toFixed(1)
+  const currentUserBet = bets?.find((bet: Bet) => bet.user.id === currentUser.id);
+  const currentUserWinPercentage = currentUserBet && totalPool > 0
+    ? ((currentUserBet.amount / totalPool) * 100).toFixed(1)
     : '0.0';
 
   // Создание секторов рулетки
@@ -231,7 +277,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
       photoUrl?: string | null;
     };
   }> => {
-    if (!game.bets || game.bets.length === 0) return [];
+    if (!bets || bets.length === 0) return [];
     
     const sectors: Array<{
       id: number;
@@ -249,8 +295,8 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     }> = [];
     let currentAngle = 0;
     
-    game.bets.forEach((bet, index) => {
-      const percentage = game.totalPool > 0 ? (bet.amount / game.totalPool) * 100 : 0;
+    bets.forEach((bet: Bet, index: number) => {
+      const percentage = totalPool > 0 ? (bet.amount / totalPool) * 100 : 0;
       const angle = (percentage / 100) * 360;
       
       sectors.push({
@@ -272,6 +318,15 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
 
   return (
     <div className="space-y-6">
+      {/* Connection status */}
+      {connectionError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+          <p className="text-red-600 text-sm">
+            Ошибка соединения: {connectionError}
+          </p>
+        </div>
+      )}
+
       {/* Header с username и таймером */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
         <div className="flex items-center justify-between">
@@ -280,7 +335,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900">
-              {formatTime(timeLeft)}
+              {formatTime(timeUntilStart)}
             </div>
             <div className={`text-sm ${isGameActive ? 'text-red-600' : 'text-green-600'}`}>
               {isGameActive ? '🎰 Игра активна!' : '⏳ Ожидание...'}
@@ -311,12 +366,12 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           {/* Кнопка вступить */}
           <button
             onClick={handlePlaceBet}
-            disabled={isPlacingBet || !betAmount || timeLeft === 0 || isGameActive}
+            disabled={isPlacingBet || !betAmount || timeUntilStart === 0 || isGameActive}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           >
             {isPlacingBet ? 'Вступление...' : 
              isGameActive ? 'Игра активна' : 
-             timeLeft === 0 ? 'Время вышло' : 
+             timeUntilStart === 0 ? 'Время вышло' : 
              'Вступить'}
           </button>
         </div>
@@ -325,7 +380,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {formatBalance(game.totalPool)}
+              {formatBalance(totalPool)}
             </div>
             <div className="text-sm text-gray-600">Общий пул</div>
           </div>
@@ -336,7 +391,44 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
             <div className="text-sm text-gray-600">Процент выигрыша</div>
           </div>
         </div>
+
+        {/* Статистика игры */}
+        {currentGame.stats && (
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-4 gap-2 text-xs text-center">
+              <div>
+                <div className="font-semibold text-gray-900">{currentGame.stats.totalBets}</div>
+                <div className="text-gray-500">Ставок</div>
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">{formatBalance(currentGame.stats.averageBet)}</div>
+                <div className="text-gray-500">Средняя</div>
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">{formatBalance(currentGame.stats.minBet)}</div>
+                <div className="text-gray-500">Мин.</div>
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">{formatBalance(currentGame.stats.maxBet)}</div>
+                <div className="text-gray-500">Макс.</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Победитель */}
+      {winner && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+          <div className="text-4xl mb-2">🎉</div>
+          <h3 className="text-xl font-bold text-yellow-800 mb-2">
+            Победитель!
+          </h3>
+          <p className="text-yellow-700">
+            {getDisplayName(winner)} выиграл {formatBalance(totalPool)} ⭐!
+          </p>
+        </div>
+      )}
 
       {/* Рулетка */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -394,16 +486,16 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
                 const radius = 80;
                 
                 const x1 = 100 + radius * Math.cos(startAngle);
-                const y1 = 100 - radius * Math.sin(startAngle);
+                const y1 = 100 + radius * Math.sin(startAngle);
                 const x2 = 100 + radius * Math.cos(endAngle);
-                const y2 = 100 - radius * Math.sin(endAngle);
+                const y2 = 100 + radius * Math.sin(endAngle);
                 
                 const largeArcFlag = sector.endAngle - sector.startAngle > 180 ? 1 : 0;
                 
                 return (
                   <path
                     key={sector.id}
-                    d={`M 100 100 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
+                    d={`M100,100 L${x1},${y1} A${radius},${radius} 0 ${largeArcFlag} 1 ${x2},${y2} Z`}
                     fill={sector.color}
                     stroke="#1e40af"
                     strokeWidth="1"
@@ -418,27 +510,27 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
         </div>
       </div>
 
-              {/* Участники */}
+      {/* Участники */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <div className="text-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Участники ({game.bets?.length || 0})</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Участники ({bets?.length || 0})</h3>
         </div>
         
         {/* Debug info */}
         <div className="text-xs text-gray-500 mb-4">
-          Debug: bets array length = {game.bets?.length || 'undefined'}, 
-          totalPool = {game.totalPool}, 
-          game status = {game.status}
+          Debug: bets array length = {bets?.length || 'undefined'}, 
+          totalPool = {totalPool}, 
+          game status = {currentGame.status}
         </div>
         
-        {!game.bets || game.bets.length === 0 ? (
+        {!bets || bets.length === 0 ? (
           <div className="text-center py-6">
             <div className="text-4xl mb-2">⏳</div>
             <p className="text-gray-600">Ожидание игроков...</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {game.bets.map((bet) => (
+            {bets.map((bet: Bet) => (
               <div
                 key={bet.id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200"
@@ -452,7 +544,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
                       {getDisplayName(bet.user)}
                     </div>
                     <div className="text-xs text-gray-500">
-                      Ставка: {formatBalance(bet.amount)} ⭐
+                      Ставка: {formatBalance(bet.amount)} ⭐ ({bet.winPercentage}%)
                     </div>
                   </div>
                 </div>
