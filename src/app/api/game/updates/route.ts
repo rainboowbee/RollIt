@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
           }
         } catch (error) {
           console.error('Error sending game update:', error);
-          sendUpdate({ type: 'error', message: 'Failed to get game update' });
+          sendUpdate({ type: 'error', message: 'Failed to get game update', timestamp: Date.now() });
         }
       };
 
