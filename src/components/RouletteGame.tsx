@@ -17,6 +17,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
   const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
   const [isGameActive, setIsGameActive] = useState(false);
   const [rouletteRotation, setRouletteRotation] = useState(0);
+  const [isFinishingGame, setIsFinishingGame] = useState(false); // Защита от множественных вызовов
   const [winner, setWinner] = useState<{
     id: number;
     username?: string | null;
@@ -37,8 +38,8 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     onUpdate: (update) => {
       if (update.type === 'game_update') {
         console.log('Real-time game update received');
-        // Обновляем состояние игры
-        onBetPlaced();
+        // НЕ вызываем onBetPlaced() здесь, чтобы избежать множественных обновлений
+        // Данные обновятся автоматически через SSE
       }
     },
     onError: (error) => {
@@ -77,7 +78,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
       console.log(`Timer update: timeUntilStart=${timeUntilStart}, status=${currentGame.status}, isGameActive=${isGameActive}`);
       
       // Если игра в статусе 'waiting' и таймер истек, запускаем игру
-      if (timeUntilStart <= 0 && currentGame.status === 'waiting' && !isGameActive) {
+      if (timeUntilStart <= 0 && currentGame.status === 'waiting' && !isGameActive && !isFinishingGame) {
         console.log('Game timer expired, starting game!');
         setIsGameActive(true);
         // Запускаем быстрое вращение рулетки
@@ -88,6 +89,14 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           console.log('Game animation finished, finishing game');
           setIsGameActive(false);
           setRouletteRotation(0);
+          
+          // Защита от множественных вызовов
+          if (isFinishingGame) {
+            console.log('Game is already being finished, skipping...');
+            return;
+          }
+          
+          setIsFinishingGame(true);
           
           try {
             // Завершаем текущую игру и создаем новую
@@ -111,13 +120,15 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
                 }
               }
               
-              // Обновляем данные игры и пользователя
+              // Обновляем данные игры и пользователя только один раз
               onBetPlaced();
             } else {
               console.error('Failed to finish game');
             }
           } catch (error) {
             console.error('Error finishing game:', error);
+          } finally {
+            setIsFinishingGame(false);
           }
         }, 5000);
       }
@@ -135,7 +146,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
-  }, [timeUntilStart, isGameActive, onBetPlaced, bets, currentGame.status]);
+  }, [timeUntilStart, isGameActive, onBetPlaced, bets, currentGame.status, isFinishingGame]);
 
   // Медленное вращение рулетки во время ожидания
   useEffect(() => {
@@ -351,10 +362,11 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           {/* Кнопка вступить */}
                      <button
              onClick={handlePlaceBet}
-             disabled={isPlacingBet || !betAmount || currentGame.status !== 'waiting' || isGameActive}
+             disabled={isPlacingBet || !betAmount || currentGame.status !== 'waiting' || isGameActive || isFinishingGame}
              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
            >
              {isPlacingBet ? 'Вступление...' : 
+              isFinishingGame ? 'Завершение...' :
               isGameActive ? 'Игра активна' : 
               currentGame.status === 'finished' ? 'Игра завершена' : 
               currentGame.status === 'waiting' ? 'Вступить' : 'Неизвестный статус'}

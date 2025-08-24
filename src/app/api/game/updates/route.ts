@@ -125,8 +125,8 @@ export async function GET(request: NextRequest) {
         }
       };
 
-      // Отправляем обновления каждые 2 секунды
-      const interval = setInterval(sendGameUpdate, 2000);
+             // Отправляем обновления каждые 5 секунд (уменьшаем частоту)
+       const interval = setInterval(sendGameUpdate, 5000);
 
       // Очистка при закрытии соединения
       request.signal.addEventListener('abort', () => {
