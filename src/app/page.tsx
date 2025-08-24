@@ -55,60 +55,40 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isTelegram, setIsTelegram] = useState<boolean | null>(null);
 
-  // Подписка на initData.user из Telegram SDK
-  const initDataUser = useSignal(initData.user);
+  // В ЭТОЙ БИБЛИОТЕКЕ useSignal возвращает значение (User | undefined), а не объект с .value
+  const initDataUser = useSignal(initData.user); // тип: any | undefined (пользователь из Telegram initData)
 
   console.log('=== Home render ===', {
     isTelegram,
     isLoading,
     hasUser: !!user,
     hasCurrentGame: !!currentGame,
-    initDataUser: initDataUser,
+    initDataUser, // уже значение, не .value
   });
 
-  // Проверяем среду (Telegram или нет)
+  // Проверка среды (внутри Telegram или нет)
   useEffect(() => {
-    console.log('=== Checking Telegram environment ===');
-    
     const checkTelegram = async () => {
       try {
-        // Используем официальный SDK для проверки
         const isInTelegram = await isTMA('complete');
-        console.log('isTMA check result:', isInTelegram);
-        
-        if (isInTelegram) {
-          console.log('Detected Telegram Mini App');
-          setIsTelegram(true);
-        } else {
-          console.log('Not in Telegram environment');
-          setIsTelegram(false);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Error checking TMA:', error);
+        setIsTelegram(isInTelegram);
+        if (!isInTelegram) setIsLoading(false);
+      } catch (e) {
+        console.error('Error checking TMA:', e);
         setIsTelegram(false);
         setIsLoading(false);
       }
     };
-
     checkTelegram();
   }, []);
 
   // Инициализация приложения
   useEffect(() => {
-    if (isTelegram === null) return; // ещё не определили
-    if (!isTelegram) return; // не Telegram → выходим
-    
-    // Проверяем, что initDataUser доступен
-    if (!initDataUser) {
-      console.log('Waiting for initDataUser...');
-      return;
-    }
+    if (isTelegram === null) return;     // ещё не знаем среду
+    if (!isTelegram) return;             // не Telegram → выходим
+    if (!initDataUser) return;           // ждём, пока SDK даст пользователя
 
-    console.log('=== Starting initialization with Telegram data ===');
-    console.log('InitDataUser:', initDataUser);
-
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     const initApp = async () => {
       try {
@@ -119,30 +99,30 @@ export default function Home() {
           return;
         }
 
-        console.log('Raw init data:', initDataRaw);
-
-        // Авторизация
         const response = await fetch('/api/auth/telegram', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `tma ${initDataRaw}`,
+            // ВАЖНО: кодируем initDataRaw, а на сервере делаем decodeURIComponent
+            'Authorization': `tma ${encodeURIComponent(initDataRaw)}`,
           },
-          body: JSON.stringify({}),
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Ошибка авторизации');
+          // подстрахуемся от не-JSON ответа
+          let msg = 'Ошибка авторизации';
+          try {
+            const errorData = await response.json();
+            msg = errorData?.error || msg;
+          } catch {}
+          throw new Error(msg);
         }
 
         const data = await response.json();
-        console.log('Auth response:', data);
-
         setUser(data.user);
         setCurrentGame(data.currentGame);
 
-        // Запускаем обновление текущей игры
+        // Пуллим состояние игры каждые 5 сек
         interval = setInterval(async () => {
           try {
             const gameResponse = await fetch('/api/game/current');
@@ -179,18 +159,17 @@ export default function Home() {
           setUser(userData.user);
         }
       }
-
       const gameResponse = await fetch('/api/game/current');
       if (gameResponse.ok) {
         const gameData = await gameResponse.json();
         setCurrentGame(gameData.game);
       }
-    } catch (error) {
-      console.error('Refresh error:', error);
+    } catch (e) {
+      console.error('Refresh error:', e);
     }
   };
 
-  // UI
+  // --- UI ---
   if (isTelegram === null) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -246,25 +225,21 @@ export default function Home() {
     );
   }
 
-  // Основной UI
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-6 max-w-md">
-        {/* Header */}
         <Section header="🎰 RollIt - Мини-игра в рулетку">
           <Cell subtitle="Делайте ставки и выигрывайте призы!">
             Добро пожаловать в игру
           </Cell>
         </Section>
 
-        {/* User Profile */}
         {user && (
           <Section header="Ваш профиль">
             <UserProfile user={user} />
           </Section>
         )}
 
-        {/* Game Content */}
         {selectedGame === 'roulette' && currentGame ? (
           <div>
             <Section header="Игра в рулетку">
@@ -283,7 +258,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* Debug Panel */}
       <DebugPanel />
     </div>
   );
