@@ -55,6 +55,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [showUsers, setShowUsers] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTelegram, setIsTelegram] = useState<boolean | null>(null);
 
@@ -165,6 +166,7 @@ export default function Home() {
   const handleBackToGames = () => {
     setSelectedGame(null);
     setShowUsers(false);
+    setShowProfile(false);
   };
 
   // --- UI ---
@@ -225,42 +227,66 @@ export default function Home() {
 
   // Основной UI
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-8 max-w-md">
-        {/* Header с красивым дизайном */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4 shadow-lg">
-            <span className="text-3xl">🎰</span>
-          </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-            RollIt
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 text-sm">
-            Увлекательная мини-игра в рулетку
-          </p>
-        </div>
-
-        {/* User Profile с улучшенным дизайном */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900">
+      <div className="container mx-auto px-4 py-6 max-w-md">
+        {/* Header с профилем и балансом */}
         {user && (
-          <div className="mb-6">
-            <UserProfile user={user} />
+          <div className="mb-8">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-cyan-400/30 shadow-lg shadow-cyan-400/20">
+              <div className="flex items-center justify-between">
+                {/* Профиль пользователя */}
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 p-0.5 animate-pulse">
+                      <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center">
+                        <span className="text-white text-lg font-bold">
+                          {user.firstName?.[0] || user.username?.[0] || 'U'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-slate-800 animate-ping"></div>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold text-lg">
+                      {user.firstName || user.username || 'Пользователь'}
+                    </div>
+                    <button
+                      onClick={() => setShowProfile(true)}
+                      className="text-cyan-300 text-sm hover:text-cyan-200 transition-colors duration-200"
+                    >
+                      @{user.username || 'username'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Баланс звезд */}
+                <div className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-sm rounded-xl p-3 border border-cyan-400/50 shadow-lg shadow-cyan-400/20">
+                  <div className="flex items-center space-x-2">
+                    <div className="text-yellow-400 text-xl">⭐</div>
+                    <div className="text-white font-bold text-lg">
+                      {user.balance.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-cyan-300 text-xs text-center">звезд</div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Game Content */}
+        {/* Список кнопок */}
         {selectedGame === 'roulette' && currentGame ? (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
-                🎰 Игра в рулетку
+              <h2 className="text-2xl font-bold text-white">
+                🎰 Рулетка
               </h2>
-              <Button 
+              <button 
                 onClick={handleBackToGames} 
-                className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
-                size="s"
+                className="bg-gradient-to-r from-slate-600/50 to-slate-700/50 hover:from-slate-500/50 hover:to-slate-600/50 backdrop-blur-sm rounded-xl px-4 py-2 border border-slate-400/30 text-white transition-all duration-200 hover:shadow-lg hover:shadow-slate-400/20"
               >
                 ← Назад
-              </Button>
+              </button>
             </div>
             <RouletteGame
               game={currentGame}
@@ -270,11 +296,52 @@ export default function Home() {
           </div>
         ) : showUsers ? (
           <UsersList onBack={handleBackToGames} />
+        ) : showProfile ? (
+          <UserProfile user={user!} onBack={handleBackToGames} />
         ) : (
-          <GameList 
-            onGameSelect={setSelectedGame} 
-            onShowUsers={() => setShowUsers(true)}
-          />
+          <div className="space-y-4">
+            {/* Список пользователей */}
+            <button
+              onClick={() => setShowUsers(true)}
+              className="w-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-400/30 hover:to-blue-400/30 backdrop-blur-md rounded-2xl p-6 border border-cyan-400/50 shadow-lg shadow-cyan-400/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-cyan-400/30"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-400/50">
+                  <span className="text-3xl">👥</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Список пользователей
+                  </h3>
+                  <p className="text-cyan-200 text-sm">
+                    Посмотреть всех участников
+                  </p>
+                </div>
+                <div className="text-cyan-400 text-2xl">→</div>
+              </div>
+            </button>
+
+            {/* Рулетка */}
+            <button
+              onClick={() => setSelectedGame('roulette')}
+              className="w-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-400/30 hover:to-pink-400/30 backdrop-blur-md rounded-2xl p-6 border border-purple-400/50 shadow-lg shadow-purple-400/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-400/30"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-400/50">
+                  <span className="text-3xl">🎰</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Рулетка
+                  </h3>
+                  <p className="text-purple-200 text-sm">
+                    Делайте ставки и выигрывайте призы!
+                  </p>
+                </div>
+                <div className="text-purple-400 text-2xl">→</div>
+              </div>
+            </button>
+          </div>
         )}
       </div>
 
