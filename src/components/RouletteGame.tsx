@@ -49,6 +49,16 @@ interface RouletteGameProps {
 }
 
 export default function RouletteGame({ game, currentUser, onBetPlaced }: RouletteGameProps) {
+  // Проверяем, что game существует
+  if (!game) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-4">⚠️</div>
+        <p className="text-gray-600">Игра не найдена</p>
+      </div>
+    );
+  }
+
   const [betAmount, setBetAmount] = useState('');
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -166,8 +176,8 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
   };
 
   // Расчет процента выигрыша для текущего пользователя
-  const currentUserBet = game.bets.find(bet => bet.user.id === currentUser.id);
-  const currentUserWinPercentage = currentUserBet 
+  const currentUserBet = game.bets?.find(bet => bet.user.id === currentUser.id);
+  const currentUserWinPercentage = currentUserBet && game.totalPool > 0
     ? ((currentUserBet.amount / game.totalPool) * 100).toFixed(1)
     : '0.0';
 
@@ -186,7 +196,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
       photoUrl?: string | null;
     };
   }> => {
-    if (game.bets.length === 0) return [];
+    if (!game.bets || game.bets.length === 0) return [];
     
     const sectors: Array<{
       id: number;
@@ -205,7 +215,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     let currentAngle = 0;
     
     game.bets.forEach((bet, index) => {
-      const percentage = (bet.amount / game.totalPool) * 100;
+      const percentage = game.totalPool > 0 ? (bet.amount / game.totalPool) * 100 : 0;
       const angle = (percentage / 100) * 360;
       
       sectors.push({
@@ -361,20 +371,20 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
         </div>
       </div>
 
-      {/* Участники */}
+              {/* Участники */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <div className="text-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Участники ({game.bets.length})</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Участники ({game.bets?.length || 0})</h3>
         </div>
         
-        {game.bets.length === 0 ? (
+        {!game.bets || game.bets.length === 0 ? (
           <div className="text-center py-6">
             <div className="text-4xl mb-2">⏳</div>
             <p className="text-gray-600">Ожидание игроков...</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {game.bets.map((bet) => (
+            {game.bets?.map((bet) => (
               <div
                 key={bet.id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200"

@@ -95,9 +95,20 @@ export default function Home() {
 
       const data = await response.json();
       console.log('Auth response:', data);
+      console.log('Current game data:', data.currentGame);
       
-      setUser(data.user);
-      setCurrentGame(data.currentGame);
+      // Проверяем структуру currentGame
+      if (data.currentGame && typeof data.currentGame === 'object') {
+        // Убеждаемся, что bets всегда является массивом
+        const gameWithBets = {
+          ...data.currentGame,
+          bets: Array.isArray(data.currentGame.bets) ? data.currentGame.bets : []
+        };
+        setCurrentGame(gameWithBets);
+      } else {
+        setCurrentGame(null);
+      }
+      
       setIsLoading(false);
     } catch (error) {
       console.error('App initialization error:', error);
@@ -111,8 +122,13 @@ export default function Home() {
     fetch('/api/game/current')
       .then(response => response.json())
       .then(data => {
-        if (data.game) {
-          setCurrentGame(data.game);
+        if (data.game && typeof data.game === 'object') {
+          // Убеждаемся, что bets всегда является массивом
+          const gameWithBets = {
+            ...data.game,
+            bets: Array.isArray(data.game.bets) ? data.game.bets : []
+          };
+          setCurrentGame(gameWithBets);
         }
       })
       .catch(error => console.error('Error updating game:', error));
@@ -164,6 +180,13 @@ export default function Home() {
 
   console.log('=== Home component render ===', {
     hasCurrentGame: !!currentGame,
+    currentGameStructure: currentGame ? {
+      hasId: !!currentGame.id,
+      hasStatus: !!currentGame.status,
+      hasBets: !!currentGame.bets,
+      betsType: currentGame.bets ? typeof currentGame.bets : 'undefined',
+      betsLength: currentGame.bets ? currentGame.bets.length : 'N/A'
+    } : 'null',
     hasUser: !!user,
     isLoading,
     isTelegram: true
@@ -203,7 +226,7 @@ export default function Home() {
         )}
 
         {/* Список кнопок / Game Content / Users List / User Profile */}
-        {selectedGame === 'roulette' && currentGame ? (
+        {selectedGame === 'roulette' && currentGame && currentGame.bets ? (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-900">
@@ -221,6 +244,24 @@ export default function Home() {
               currentUser={user!}
               onBetPlaced={handleBetPlaced}
             />
+          </div>
+        ) : selectedGame === 'roulette' && (!currentGame || !currentGame.bets) ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">
+                🎰 Рулетка
+              </h2>
+              <button
+                onClick={handleBackToGames}
+                className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-4 py-2 transition-colors duration-200"
+              >
+                ← Назад
+              </button>
+            </div>
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">⏳</div>
+              <p className="text-gray-600">Загрузка игры...</p>
+            </div>
           </div>
         ) : showUsers ? (
           <UsersList onBack={handleBackToGames} />
