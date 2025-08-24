@@ -17,6 +17,7 @@ interface User {
   lastName?: string | null;
   photoUrl?: string | null;
   balance: number;
+  createdAt: string;
 }
 
 interface Bet {
@@ -248,7 +249,8 @@ export default function Home() {
         )}
       </div>
 
-      <DebugPanel />
+      {/* Debug Panel */}
+      <DebugPanel user={user} />
     </div>
   );
 }

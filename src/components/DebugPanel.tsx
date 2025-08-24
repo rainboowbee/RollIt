@@ -4,7 +4,22 @@ import { useState } from 'react';
 import { initData, useSignal, retrieveRawInitData } from '@telegram-apps/sdk-react';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 
-export default function DebugPanel() {
+interface User {
+  id: number;
+  telegramId: string;
+  username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  photoUrl?: string | null;
+  balance: number;
+  createdAt: string;
+}
+
+interface DebugPanelProps {
+  user?: User | null;
+}
+
+export default function DebugPanel({ user }: DebugPanelProps) {
   const [isVisible, setIsVisible] = useState(false);
   const initDataUser = useSignal(initData.user);
 
@@ -31,6 +46,24 @@ export default function DebugPanel() {
         <Button onClick={toggleVisibility} size="s">✕</Button>
       </div>
       
+      <Section header="Database User">
+        <Cell subtitle="User ID">
+          {user?.id || 'Not loaded'}
+        </Cell>
+        <Cell subtitle="Telegram ID">
+          {user?.telegramId || 'Not loaded'}
+        </Cell>
+        <Cell subtitle="Username">
+          {user?.username || 'Not set'}
+        </Cell>
+        <Cell subtitle="Registration Date">
+          {user?.createdAt ? new Date(user.createdAt).toLocaleString('ru-RU') : 'Not loaded'}
+        </Cell>
+        <Cell subtitle="Balance">
+          {user?.balance || 'Not loaded'} coins
+        </Cell>
+      </Section>
+
       <Section header="Init Data">
         <Cell subtitle="User data from initData">
           {initDataUser ? JSON.stringify(initDataUser, null, 2) : 'undefined'}
@@ -55,6 +88,7 @@ export default function DebugPanel() {
       <Button
         onClick={() => {
           console.log('=== Debug Info ===');
+          console.log('Database User:', user);
           console.log('Init Data User:', initDataUser);
           console.log('Raw Init Data:', retrieveRawInitData());
           console.log('Window Location:', window.location.href);

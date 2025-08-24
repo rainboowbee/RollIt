@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
         lastName: user.lastName,
         photoUrl: user.photoUrl,
         balance: user.balance,
+        createdAt: user.createdAt,
       },
       currentGame: currentGame
         ? {
