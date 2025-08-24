@@ -81,7 +81,6 @@ export default function UsersList({ onBack }: UsersListProps) {
               <Avatar
                 size={40}
                 src={user.photoUrl || undefined}
-                fallbackName={user.firstName || user.username || 'U'}
               />
             }
             subtitle={
