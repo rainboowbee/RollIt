@@ -68,12 +68,14 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
       setTimeLeft(timeUntilStart);
       
       if (timeUntilStart === 0 && !isGameActive) {
+        console.log('Game timer expired, starting game!');
         setIsGameActive(true);
         // Запускаем быстрое вращение рулетки
         setRouletteRotation(prev => prev + 3600); // 10 полных оборотов
         
         // Через 5 секунд (время вращения) создаем новую игру
         setTimeout(async () => {
+          console.log('Game animation finished, finishing game');
           setIsGameActive(false);
           setRouletteRotation(0);
           
@@ -100,7 +102,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
-  }, [game, game?.gameStartTime, isGameActive, onBetPlaced]);
+  }, [game?.gameStartTime, isGameActive, onBetPlaced]);
 
   // Медленное вращение рулетки во время ожидания
   useEffect(() => {
@@ -109,6 +111,18 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     const interval = setInterval(() => {
       setRouletteRotation(prev => prev + 1);
     }, 100);
+    return () => clearInterval(interval);
+  }, [game, isGameActive]);
+
+  // Быстрое вращение рулетки во время активной игры
+  useEffect(() => {
+    if (!game || !isGameActive) return;
+    
+    console.log('Starting fast roulette rotation');
+    const interval = setInterval(() => {
+      setRouletteRotation(prev => prev + 10); // Быстрое вращение
+    }, 50); // Каждые 50мс для плавности
+    
     return () => clearInterval(interval);
   }, [game, isGameActive]);
 
@@ -175,6 +189,12 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
 
   const formatBalance = (balance: number) => {
     return balance.toLocaleString();
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   // Расчет процента выигрыша для текущего пользователя
@@ -245,8 +265,13 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           <div className="text-blue-600 text-lg font-medium">
             {currentUser.username ? `@${currentUser.username}` : `ID: ${currentUser.id}`}
           </div>
-          <div className="text-2xl font-bold text-gray-900">
-            {timeLeft}s
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-900">
+              {formatTime(timeLeft)}
+            </div>
+            <div className={`text-sm ${isGameActive ? 'text-red-600' : 'text-green-600'}`}>
+              {isGameActive ? '🎰 Игра активна!' : '⏳ Ожидание...'}
+            </div>
           </div>
         </div>
       </div>
@@ -273,10 +298,13 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           {/* Кнопка вступить */}
           <button
             onClick={handlePlaceBet}
-            disabled={isPlacingBet || !betAmount || timeLeft === 0}
+            disabled={isPlacingBet || !betAmount || timeLeft === 0 || isGameActive}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
           >
-            {isPlacingBet ? 'Вступление...' : 'Вступить'}
+            {isPlacingBet ? 'Вступление...' : 
+             isGameActive ? 'Игра активна' : 
+             timeLeft === 0 ? 'Время вышло' : 
+             'Вступить'}
           </button>
         </div>
 

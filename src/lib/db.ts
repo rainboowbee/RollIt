@@ -121,10 +121,15 @@ export async function getCurrentGame() {
 }
 
 export async function createBet(userId: number, gameId: number, amount: number): Promise<BetWithUser> {
+  console.log(`=== createBet called ===`);
+  console.log(`userId: ${userId}, gameId: ${gameId}, amount: ${amount}`);
+  
   // Check if user has enough balance
   const user = await prisma.user.findUnique({
     where: { id: userId }
   });
+
+  console.log(`User found:`, user);
 
   if (!user || user.balance < amount) {
     throw new Error('Insufficient balance');
@@ -137,6 +142,8 @@ export async function createBet(userId: number, gameId: number, amount: number):
       gameId
     }
   });
+
+  console.log(`Existing bet:`, existingBet);
 
   let bet: BetWithUser;
   
@@ -159,6 +166,7 @@ export async function createBet(userId: number, gameId: number, amount: number):
         }
       }
     });
+    console.log(`Updated existing bet:`, bet);
   } else {
     // Create new bet
     bet = await prisma.bet.create({
@@ -179,19 +187,28 @@ export async function createBet(userId: number, gameId: number, amount: number):
         }
       }
     });
+    console.log(`Created new bet:`, bet);
   }
 
   // Update user balance
-  await prisma.user.update({
+  console.log(`Updating user balance from ${user.balance} to ${user.balance - amount}`);
+  const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: { balance: { decrement: amount } }
   });
+  console.log(`User balance updated:`, updatedUser);
 
   // Update game total pool
-  await prisma.game.update({
+  const currentGame = await prisma.game.findUnique({
+    where: { id: gameId }
+  });
+  console.log(`Current game totalPool: ${currentGame?.totalPool}`);
+  
+  const updatedGame = await prisma.game.update({
     where: { id: gameId },
     data: { totalPool: { increment: amount } }
   });
+  console.log(`Game totalPool updated: ${updatedGame.totalPool}`);
 
   return bet;
 }
@@ -206,6 +223,9 @@ export async function finishGame(gameId: number): Promise<{
   commission: number;
   winnerId: number | null;
 }> {
+  console.log(`=== finishGame called ===`);
+  console.log(`gameId: ${gameId}`);
+  
   const game = await prisma.game.findUnique({
     where: { id: gameId },
     include: {
@@ -216,6 +236,8 @@ export async function finishGame(gameId: number): Promise<{
       }
     }
   });
+
+  console.log(`Game found:`, game);
 
   if (!game || game.status === 'finished') {
     throw new Error('Game not found or already finished');
@@ -249,23 +271,41 @@ export async function finishGame(gameId: number): Promise<{
     winner = game.bets[game.bets.length - 1];
   }
 
+  console.log(`Winner selected:`, winner);
+
   // Calculate commission (5%)
   const commission = Math.floor(game.totalPool * 0.05);
   const prizeAmount = game.totalPool - commission;
+  
+  console.log(`Total pool: ${game.totalPool}, Commission: ${commission}, Prize: ${prizeAmount}`);
 
   // Update winner balance and game status
   // Update winner balance (winner gets the prize)
-  await prisma.user.update({
+  console.log(`Updating winner balance for user ${winner.userId}`);
+  const winnerBefore = await prisma.user.findUnique({
+    where: { id: winner.userId }
+  });
+  console.log(`Winner balance before: ${winnerBefore?.balance}`);
+  
+  const winnerAfter = await prisma.user.update({
     where: { id: winner.userId },
     data: { balance: { increment: prizeAmount } }
   });
+  console.log(`Winner balance after: ${winnerAfter.balance}`);
 
   // Return bets to all players (they get their bets back)
   for (const bet of game.bets) {
-    await prisma.user.update({
+    console.log(`Returning bet ${bet.amount} to user ${bet.userId}`);
+    const userBefore = await prisma.user.findUnique({
+      where: { id: bet.userId }
+    });
+    console.log(`User ${bet.userId} balance before: ${userBefore?.balance}`);
+    
+    const userAfter = await prisma.user.update({
       where: { id: bet.userId },
       data: { balance: { increment: bet.amount } }
     });
+    console.log(`User ${bet.userId} balance after: ${userAfter.balance}`);
   }
 
   // Finish the game
