@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getTelegramWebApp } from '@/lib/telegram';
+import { initData, useSignal, isTMA } from '@telegram-apps/sdk-react';
+import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
+
 import UserProfile from '@/components/UserProfile';
 import GameList from '@/components/GameList';
 import RouletteGame from '@/components/RouletteGame';
-import DebugInfo from '@/components/DebugInfo';
 
 interface User {
   id: number;
@@ -53,43 +54,30 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isTelegram, setIsTelegram] = useState<boolean | null>(null);
 
-  // Check if we're in Telegram WebApp with better detection
+  // Use official Telegram SDK signals
+  const initDataUser = useSignal(initData.user);
+  const initDataRaw = useSignal(initData.raw);
+
+  // Check if we're in Telegram Mini App
   useEffect(() => {
-    const checkTelegram = (): boolean => {
-      // Multiple ways to detect Telegram WebApp
-      const hasTelegramWebApp = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
-      const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
-      const hasUserAgent = typeof window !== 'undefined' && navigator.userAgent.includes('TelegramWebApp');
-      
-      console.log('Telegram detection:', {
-        hasTelegramWebApp,
-        hasInitData,
-        hasUserAgent,
-        userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'N/A'
-      });
-
-      return hasTelegramWebApp || hasInitData || hasUserAgent;
-    };
-
-    // Check immediately
-    const telegramDetected = checkTelegram();
-    setIsTelegram(telegramDetected);
-
-    // If not detected immediately, wait a bit and check again
-    if (!telegramDetected) {
-      const timer = setTimeout(() => {
-        const retryCheck = checkTelegram();
-        setIsTelegram(retryCheck);
-        if (!retryCheck) {
+    const checkTelegram = async () => {
+      try {
+        // Use official SDK to check if we're in Telegram
+        const isInTelegram = await isTMA('complete');
+        console.log('isTMA check result:', isInTelegram);
+        setIsTelegram(isInTelegram);
+        
+        if (!isInTelegram) {
           setIsLoading(false);
         }
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
+      } catch (error) {
+        console.error('Error checking TMA:', error);
+        setIsTelegram(false);
+        setIsLoading(false);
+      }
+    };
 
-    if (telegramDetected) {
-      setIsLoading(false);
-    }
+    checkTelegram();
   }, []);
 
   useEffect(() => {
@@ -99,24 +87,20 @@ export default function Home() {
       return;
     }
 
-    const initApp = async () => {
+    const initializeApp = async () => {
       try {
-        const webApp = getTelegramWebApp();
-        if (!webApp) {
-          setError('Telegram WebApp не доступен');
-          setIsLoading(false);
+        console.log('=== Initializing RollIt App in Telegram ===');
+        console.log('Init data user:', initDataUser);
+        console.log('Init data raw:', initDataRaw);
+
+        // Wait for init data to be available
+        if (!initDataUser || !initDataRaw) {
+          console.log('Waiting for init data...');
           return;
         }
 
-        console.log('Initializing Telegram WebApp:', {
-          initData: webApp.initData,
-          initDataUnsafe: webApp.initDataUnsafe
-        });
-
-        // Initialize Telegram WebApp
-        webApp.ready();
-        webApp.expand();
-
+        console.log('Starting authentication...');
+        
         // Authenticate user
         const response = await fetch('/api/auth/telegram', {
           method: 'POST',
@@ -124,7 +108,7 @@ export default function Home() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            initData: webApp.initData,
+            initData: initDataRaw,
           }),
         });
 
@@ -161,8 +145,11 @@ export default function Home() {
       }
     };
 
-    initApp();
-  }, [isTelegram]);
+    // Initialize when we have the required data
+    if (initDataUser && initDataRaw) {
+      initializeApp();
+    }
+  }, [isTelegram, initDataUser, initDataRaw]);
 
   const handleGameSelect = (gameId: string) => {
     setSelectedGame(gameId);
@@ -196,7 +183,7 @@ export default function Home() {
   // Show loading state while checking Telegram
   if (isTelegram === null) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Проверка платформы...</p>
@@ -208,7 +195,7 @@ export default function Home() {
   // Show error if not in Telegram
   if (!isTelegram) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -225,7 +212,7 @@ export default function Home() {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Загрузка приложения...</p>
@@ -237,19 +224,19 @@ export default function Home() {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             Ошибка
           </h1>
           <p className="text-gray-600 dark:text-gray-400">{error}</p>
-          <button 
+          <Button 
             onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="mt-4"
           >
             Попробовать снова
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -257,36 +244,33 @@ export default function Home() {
 
   // Show main app
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-6 max-w-md">
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            🎰 RollIt
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Мини-игра в рулетку
-          </p>
-        </div>
+        <Section header="🎰 RollIt - Мини-игра в рулетку">
+          <Cell subtitle="Делайте ставки и выигрывайте призы!">
+            Добро пожаловать в игру
+          </Cell>
+        </Section>
 
         {/* User Profile */}
         {user && (
-          <div className="mb-6">
+          <Section header="Ваш профиль">
             <UserProfile user={user} />
-          </div>
+          </Section>
         )}
 
         {/* Game Content */}
         {selectedGame === 'roulette' && currentGame ? (
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <button
+            <Section header="Игра в рулетку">
+              <Button 
                 onClick={handleBackToGames}
-                className="text-blue-600 dark:text-blue-400 hover:underline"
+                className="mb-4"
               >
                 ← Назад к играм
-              </button>
-            </div>
+              </Button>
+            </Section>
             <RouletteGame
               game={currentGame}
               currentUser={user!}
@@ -297,9 +281,6 @@ export default function Home() {
           <GameList onGameSelect={handleGameSelect} />
         )}
       </div>
-      
-      {/* Debug Info */}
-      <DebugInfo />
     </div>
   );
 }

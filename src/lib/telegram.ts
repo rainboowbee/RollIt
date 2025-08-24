@@ -74,9 +74,26 @@ export function isTelegramWebApp(): boolean {
   // Method 4: Check for Telegram-specific URL parameters
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam')) {
+    if (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam') || urlParams.has('tgWebAppThemeParams')) {
       return true;
     }
+  }
+  
+  // Method 5: Check for Telegram-specific domains
+  if (window.location.href.includes('t.me') || 
+      window.location.href.includes('telegram.org') || 
+      window.location.href.includes('web.telegram.org')) {
+    return true;
+  }
+  
+  // Method 6: Check for global Telegram variables
+  if ((window as unknown as Record<string, unknown>).TelegramWebApp || (window as unknown as Record<string, unknown>).tgWebApp) {
+    return true;
+  }
+  
+  // Method 7: Check for Telegram-specific environment variables
+  if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__TELEGRAM_WEB_APP__) {
+    return true;
   }
   
   return false;
@@ -142,4 +159,60 @@ export function extractUserFromInitData(initData: string): TelegramUser | null {
     console.error('Error extracting user from init data:', error);
     return null;
   }
+}
+
+export function forceInitTelegramWebApp(): void {
+  if (typeof window === 'undefined') return;
+  
+  // Try to initialize Telegram WebApp if it exists but might not be ready
+  if (window.Telegram?.WebApp) {
+    try {
+      window.Telegram.WebApp.ready();
+      console.log('Telegram WebApp force initialized');
+    } catch (error) {
+      console.warn('Error force initializing WebApp:', error);
+    }
+  }
+  
+  // Check for alternative Telegram WebApp implementations
+  if ((window as unknown as Record<string, unknown>).TelegramWebApp) {
+    try {
+      ((window as unknown as Record<string, unknown>).TelegramWebApp as { ready: () => void }).ready();
+      console.log('Alternative Telegram WebApp initialized');
+    } catch (error) {
+      console.warn('Error initializing alternative WebApp:', error);
+    }
+  }
+}
+
+export function waitForTelegramWebApp(maxWaitTime = 10000): Promise<TelegramWebApp | null> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve(null);
+      return;
+    }
+    
+    // Check immediately
+    if (window.Telegram?.WebApp) {
+      resolve(window.Telegram.WebApp);
+      return;
+    }
+    
+    // Wait and check periodically
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      if (window.Telegram?.WebApp) {
+        clearInterval(checkInterval);
+        resolve(window.Telegram.WebApp);
+        return;
+      }
+      
+      // Timeout
+      if (Date.now() - startTime > maxWaitTime) {
+        clearInterval(checkInterval);
+        resolve(null);
+        return;
+      }
+    }, 100);
+  });
 }

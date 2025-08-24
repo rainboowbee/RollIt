@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Exclude exampletma folder from build
+  webpack: (config) => {
+    config.watchOptions = {
+      ignored: ['**/exampletma/**']
+    };
+    return config;
+  },
 };
 
 export default nextConfig;
