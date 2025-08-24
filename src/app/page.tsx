@@ -231,43 +231,27 @@ export default function Home() {
       <div className="container mx-auto px-4 py-6 max-w-md">
         {/* Header с профилем и балансом */}
         {user && (
-          <div className="mb-8">
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-cyan-400/30 shadow-lg shadow-cyan-400/20">
+          <div className="mb-6">
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-cyan-400/30 shadow-lg shadow-cyan-400/20">
               <div className="flex items-center justify-between">
                 {/* Профиль пользователя */}
                 <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 p-0.5 animate-pulse">
-                      <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center">
-                        <span className="text-white text-lg font-bold">
-                          {user.firstName?.[0] || user.username?.[0] || 'U'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-slate-800 animate-ping"></div>
-                  </div>
-                  <div>
-                    <div className="text-white font-semibold text-lg">
-                      {user.firstName || user.username || 'Пользователь'}
-                    </div>
-                    <button
-                      onClick={() => setShowProfile(true)}
-                      className="text-cyan-300 text-sm hover:text-cyan-200 transition-colors duration-200"
-                    >
-                      @{user.username || 'username'}
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setShowProfile(true)}
+                    className="text-cyan-300 text-lg font-medium hover:text-cyan-200 transition-colors duration-200"
+                  >
+                    @{user.username || 'username'}
+                  </button>
                 </div>
 
                 {/* Баланс звезд */}
-                <div className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-sm rounded-xl p-3 border border-cyan-400/50 shadow-lg shadow-cyan-400/20">
+                <div className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-sm rounded-lg p-2 border border-cyan-400/50 shadow-lg shadow-cyan-400/20">
                   <div className="flex items-center space-x-2">
-                    <div className="text-yellow-400 text-xl">⭐</div>
+                    <div className="text-yellow-400 text-lg">⭐</div>
                     <div className="text-white font-bold text-lg">
                       {user.balance.toLocaleString()}
                     </div>
                   </div>
-                  <div className="text-cyan-300 text-xs text-center">звезд</div>
                 </div>
               </div>
             </div>

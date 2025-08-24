@@ -22,30 +22,15 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
     <div className="space-y-6">
       {/* Header с профилем */}
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-cyan-400/30 shadow-lg shadow-cyan-400/20">
-        <div className="flex items-center space-x-4">
-          {/* Аватар с градиентным кольцом */}
-          <div className="relative">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 p-0.5 animate-pulse">
-              <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center">
-                <span className="text-white text-2xl font-bold">
-                  {user.firstName?.[0] || user.username?.[0] || 'U'}
-                </span>
-              </div>
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-slate-800 animate-ping"></div>
-          </div>
-
-          {/* Информация о пользователе */}
-          <div className="flex-1">
-            <h3 className="text-2xl font-bold text-white mb-2">
-              {displayName}
-            </h3>
-            {user.username && (
-              <p className="text-cyan-300 text-lg font-medium">
-                @{user.username}
-              </p>
-            )}
-          </div>
+        <div className="text-center">
+          <h3 className="text-2xl font-bold text-white mb-2">
+            {displayName}
+          </h3>
+          {user.username && (
+            <p className="text-cyan-300 text-lg font-medium">
+              @{user.username}
+            </p>
+          )}
         </div>
       </div>
 
@@ -59,7 +44,6 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
             <div className="text-3xl font-bold text-white mb-1">
               {user.balance.toLocaleString()}
             </div>
-            <div className="text-cyan-300 text-sm">звезд</div>
           </div>
         </div>
 
@@ -71,7 +55,6 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
             <div className="text-3xl font-bold text-white mb-1">
               {(user.balance * 1.254).toFixed(0)}
             </div>
-            <div className="text-purple-300 text-sm">очков</div>
           </div>
         </div>
       </div>

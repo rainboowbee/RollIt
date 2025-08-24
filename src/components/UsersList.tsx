@@ -99,26 +99,12 @@ export default function UsersList({ onBack }: UsersListProps) {
         {users.map((user, index) => (
           <div
             key={user.id}
-            className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-slate-400/30 shadow-lg shadow-slate-400/20 hover:shadow-xl hover:shadow-slate-400/30 transition-all duration-200 hover:scale-105"
+            className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-slate-400/30 shadow-lg shadow-slate-400/20 hover:shadow-xl hover:shadow-slate-400/30 transition-all duration-200 hover:scale-105"
           >
             <div className="flex items-center space-x-4">
-              {/* Аватар с красивой рамкой */}
-              <div className="relative">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 p-0.5">
-                  <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center">
-                    <span className="text-white text-lg font-bold">
-                      {user.firstName?.[0] || user.username?.[0] || 'U'}
-                    </span>
-                  </div>
-                </div>
-                {index < 3 && (
-                  <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                    index === 0 ? 'bg-yellow-400' : 
-                    index === 1 ? 'bg-slate-400' : 'bg-amber-600'
-                  }`}>
-                    {index + 1}
-                  </div>
-                )}
+              {/* Номер участника */}
+              <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-cyan-400/50">
+                {index + 1}
               </div>
 
               {/* Информация о пользователе */}
@@ -134,13 +120,12 @@ export default function UsersList({ onBack }: UsersListProps) {
                   )}
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 text-xs text-slate-300 mb-2">
-                  <span>ID: {user.telegramId}</span>
-                  <span>Рег: {new Date(user.createdAt).toLocaleDateString('ru-RU')}</span>
+                <div className="text-xs text-slate-300">
+                  Регистрация: {new Date(user.createdAt).toLocaleDateString('ru-RU')}
                 </div>
               </div>
 
-              {/* Баланс с красивым дизайном */}
+              {/* Баланс */}
               <div className="text-right">
                 <div className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm rounded-full border border-green-400/50 shadow-lg shadow-green-400/20">
                   <span className="text-green-400 font-bold text-sm">
