@@ -71,42 +71,47 @@ export async function GET(request: NextRequest) {
             const totalPool = game.bets.reduce((sum, bet) => sum + bet.amount, 0);
             
             // Преобразуем данные игры в формат, совместимый с нашим интерфейсом
-            const processedGame: Game = {
-              id: game.id,
-              status: game.status,
-              totalPool,
-              createdAt: game.createdAt,
-              gameStartTime: game.gameStartTime,
-              bets: game.bets.map(bet => ({
-                id: bet.id,
-                amount: bet.amount,
-                createdAt: bet.createdAt,
-                winPercentage: totalPool > 0 ? ((bet.amount / totalPool) * 100).toFixed(1) : '0.0',
-                user: {
-                  id: bet.user.id,
-                  username: bet.user.username,
-                  firstName: bet.user.firstName,
-                  lastName: bet.user.lastName,
-                  photoUrl: bet.user.photoUrl,
-                }
-              })),
-              winnerId: game.winnerId,
-              winner: game.winner ? {
-                id: game.winner.id,
-                username: game.winner.username,
-                firstName: game.winner.firstName,
-                lastName: game.winner.lastName,
-              } : null,
-              timeUntilStart: Math.max(0, Math.floor((new Date(game.gameStartTime).getTime() - Date.now()) / 1000)),
-              gameStatus: game.status,
-              stats: {
-                totalBets: game.bets.length,
-                totalPool,
-                averageBet: game.bets.length > 0 ? Math.round(totalPool / game.bets.length) : 0,
-                minBet: game.bets.length > 0 ? Math.min(...game.bets.map(b => b.amount)) : 0,
-                maxBet: game.bets.length > 0 ? Math.max(...game.bets.map(b => b.amount)) : 0,
-              }
-            };
+                         // Рассчитываем время до начала игры только если игра в статусе 'waiting'
+             const timeUntilStart = game.status === 'waiting' 
+               ? Math.max(0, Math.floor((new Date(game.gameStartTime).getTime() - Date.now()) / 1000))
+               : 0;
+
+             const processedGame: Game = {
+               id: game.id,
+               status: game.status,
+               totalPool,
+               createdAt: game.createdAt,
+               gameStartTime: game.gameStartTime,
+               bets: game.bets.map(bet => ({
+                 id: bet.id,
+                 amount: bet.amount,
+                 createdAt: bet.createdAt,
+                 winPercentage: totalPool > 0 ? ((bet.amount / totalPool) * 100).toFixed(1) : '0.0',
+                 user: {
+                   id: bet.user.id,
+                   username: bet.user.username,
+                   firstName: bet.user.firstName,
+                   lastName: bet.user.lastName,
+                   photoUrl: bet.user.photoUrl,
+                 }
+               })),
+               winnerId: game.winnerId,
+               winner: game.winner ? {
+                 id: game.winner.id,
+                 username: game.winner.username,
+                 firstName: game.winner.firstName,
+                 lastName: game.winner.lastName,
+               } : null,
+               timeUntilStart,
+               gameStatus: game.status,
+               stats: {
+                 totalBets: game.bets.length,
+                 totalPool,
+                 averageBet: game.bets.length > 0 ? Math.round(totalPool / game.bets.length) : 0,
+                 minBet: game.bets.length > 0 ? Math.min(...game.bets.map(b => b.amount)) : 0,
+                 maxBet: game.bets.length > 0 ? Math.max(...game.bets.map(b => b.amount)) : 0,
+               }
+             };
             
             sendUpdate({
               type: 'game_update',

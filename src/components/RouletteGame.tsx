@@ -59,19 +59,31 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     return realtimeTimeUntilStart ?? game.timeUntilStart ?? 0;
   }, [realtimeTimeUntilStart, game.timeUntilStart, isGameActive, currentGame.status]);
 
+  // Сбрасываем состояние игры при изменении ID игры
+  useEffect(() => {
+    if (currentGame.id !== game.id) {
+      console.log('Game changed, resetting state');
+      setIsGameActive(false);
+      setRouletteRotation(0);
+      setWinner(null);
+    }
+  }, [currentGame.id, game.id]);
+
   // Таймер игры
   useEffect(() => {
     if (!currentGame) return;
     
     const updateTimer = () => {
-      // Проверяем, что игра в статусе 'waiting' и таймер истек
-      if (timeUntilStart <= 0 && !isGameActive && currentGame.status === 'waiting') {
+      console.log(`Timer update: timeUntilStart=${timeUntilStart}, status=${currentGame.status}, isGameActive=${isGameActive}`);
+      
+      // Если игра в статусе 'waiting' и таймер истек, запускаем игру
+      if (timeUntilStart <= 0 && currentGame.status === 'waiting' && !isGameActive) {
         console.log('Game timer expired, starting game!');
         setIsGameActive(true);
         // Запускаем быстрое вращение рулетки
         setRouletteRotation(prev => prev + 3600); // 10 полных оборотов
         
-        // Через 5 секунд (время вращения) создаем новую игру
+        // Через 5 секунд (время вращения) завершаем игру
         setTimeout(async () => {
           console.log('Game animation finished, finishing game');
           setIsGameActive(false);
@@ -101,23 +113,20 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
               
               // Обновляем данные игры и пользователя
               onBetPlaced();
-              
-              // Сбрасываем состояние игры и ждем обновления данных
-              setIsGameActive(false);
-              
-              // Принудительно обновляем данные игры через небольшую задержку
-              setTimeout(() => {
-                onBetPlaced();
-              }, 1000);
             } else {
               console.error('Failed to finish game');
-              setIsGameActive(false);
             }
           } catch (error) {
             console.error('Error finishing game:', error);
-            setIsGameActive(false);
           }
         }, 5000);
+      }
+      
+      // Если игра завершена или в другом статусе, сбрасываем активность
+      if (currentGame.status !== 'waiting' && isGameActive) {
+        console.log('Game status changed, resetting active state');
+        setIsGameActive(false);
+        setRouletteRotation(0);
       }
     };
 
@@ -126,7 +135,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
-  }, [timeUntilStart, isGameActive, onBetPlaced, bets, currentGame]);
+  }, [timeUntilStart, isGameActive, onBetPlaced, bets, currentGame.status]);
 
   // Медленное вращение рулетки во время ожидания
   useEffect(() => {
@@ -311,10 +320,11 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
             <div className="text-2xl font-bold text-gray-900">
               {formatTime(timeUntilStart)}
             </div>
-                       <div className={`text-sm ${isGameActive ? 'text-red-600' : 'text-green-600'}`}>
-             {isGameActive ? '🎰 Игра активна!' : 
-              currentGame.status === 'waiting' ? '⏳ Ожидание...' : '🎯 Игра завершена'}
-           </div>
+                                    <div className={`text-sm ${isGameActive ? 'text-red-600' : 'text-green-600'}`}>
+               {isGameActive ? '🎰 Игра активна!' : 
+                currentGame.status === 'waiting' ? '⏳ Ожидание...' : 
+                currentGame.status === 'finished' ? '🎯 Игра завершена' : '❓ Неизвестный статус'}
+             </div>
           </div>
         </div>
       </div>
@@ -346,8 +356,8 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
            >
              {isPlacingBet ? 'Вступление...' : 
               isGameActive ? 'Игра активна' : 
-              currentGame.status !== 'waiting' ? 'Игра завершена' : 
-              'Вступить'}
+              currentGame.status === 'finished' ? 'Игра завершена' : 
+              currentGame.status === 'waiting' ? 'Вступить' : 'Неизвестный статус'}
            </button>
         </div>
 
