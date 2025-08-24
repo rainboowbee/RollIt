@@ -294,7 +294,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
         {/* ID пользователей над рулеткой */}
         <div className="flex justify-center mb-4">
           <div className="flex space-x-2 text-xs text-gray-600">
-            {sectors.map((sector, index) => (
+            {sectors.map((sector) => (
               <div key={sector.id} className="text-center">
                 <div className="font-medium">ID: {sector.user.id}</div>
                 <div className="text-xs">{sector.percentage}%</div>
@@ -331,7 +331,7 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
               />
               
               {/* Секторы */}
-              {sectors.map((sector, index) => {
+              {sectors.map((sector) => {
                 const startAngle = (sector.startAngle * Math.PI) / 180;
                 const endAngle = (sector.endAngle * Math.PI) / 180;
                 const radius = 80;
@@ -374,14 +374,14 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           </div>
         ) : (
           <div className="space-y-3">
-            {game.bets.map((bet, index) => (
+            {game.bets.map((bet) => (
               <div
                 key={bet.id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-bold">
-                    {index + 1}
+                    {bet.id}
                   </div>
                   <div>
                     <div className="font-medium text-gray-900">

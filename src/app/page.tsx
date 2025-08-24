@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { isTMA, retrieveRawInitData } from '@telegram-apps/sdk-react';
+import RouletteGame from '@/components/RouletteGame';
+import UsersList from '@/components/UsersList';
+import UserProfile from '@/components/UserProfile';
+import DebugPanel from '@/components/DebugPanel';
 
 interface User {
   id: number;
@@ -11,6 +15,7 @@ interface User {
   lastName?: string | null;
   photoUrl?: string | null;
   balance: number;
+  createdAt: string;
 }
 
 interface Bet {
@@ -31,215 +36,243 @@ interface Game {
   winner?: User | null;
 }
 
-interface RouletteGameProps {
-  game: Game;
-  currentUser: User;
-  onBetPlaced: () => void;
-}
+export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const [currentGame, setCurrentGame] = useState<Game | null>(null);
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [showUsers, setShowUsers] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default function RouletteGame({ game, currentUser, onBetPlaced }: RouletteGameProps) {
-  const [betAmount, setBetAmount] = useState('');
-  const [isPlacingBet, setIsPlacingBet] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [isGameActive, setIsGameActive] = useState(false);
-  const [rouletteRotation, setRouletteRotation] = useState(0);
-  const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
-
-  // Таймер
+  // Проверяем Telegram WebApp
   useEffect(() => {
-    const updateTimer = () => {
-      const now = new Date().getTime();
-      const gameStart = new Date(game.gameStartTime).getTime();
-      const timeUntilStart = Math.max(0, Math.floor((gameStart - now) / 1000));
-
-      setTimeLeft(timeUntilStart);
-
-      if (timeUntilStart === 0 && !isGameActive) {
-        setIsGameActive(true);
-        setRouletteRotation(prev => prev + 3600);
-
-        setTimeout(async () => {
-          setIsGameActive(false);
-          setRouletteRotation(0);
-
-          try {
-            await fetch('/api/game/finish', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-            });
-            onBetPlaced();
-          } catch (error) {
-            console.error('Error finishing game:', error);
-          }
-        }, 5000);
+    const checkTelegram = async () => {
+      try {
+        const isTelegram = await isTMA('complete');
+        return isTelegram;
+      } catch (error) {
+        console.error('Error checking Telegram environment:', error);
+        return false;
       }
     };
 
-    updateTimer();
-    const timer = setInterval(updateTimer, 1000);
-    return () => clearInterval(timer);
-  }, [game.gameStartTime, isGameActive, onBetPlaced]);
+    const initializeApp = async () => {
+      const hasTelegramWebApp = await checkTelegram();
+      
+      if (hasTelegramWebApp) {
+        await authenticateUser();
+      } else {
+        setIsLoading(false);
+        setError('Это приложение работает только в Telegram');
+      }
+    };
 
-  // Медленное вращение
-  useEffect(() => {
-    if (!isGameActive) {
-      const interval = setInterval(() => setRouletteRotation(prev => prev + 1), 100);
-      return () => clearInterval(interval);
-    }
-  }, [isGameActive]);
+    initializeApp();
+  }, []);
 
-  const handlePlaceBet = async () => {
-    const amount = Number(betAmount);
-
-    if (!amount || amount <= 0) return alert('Введите корректную ставку');
-    if (amount > currentUser.balance) {
-      setShowInsufficientFunds(true);
-      setTimeout(() => setShowInsufficientFunds(false), 3000);
-      return;
-    }
-
-    setIsPlacingBet(true);
+  const authenticateUser = async () => {
     try {
-      const response = await fetch('/api/bet', {
+      const initDataRaw = retrieveRawInitData();
+      console.log('=== Checking Telegram Mini App environment ===');
+      console.log('Window location:', window.location.href);
+      console.log('User agent:', navigator.userAgent);
+      console.log('isTMA check result:', isTMA('complete'));
+      console.log('Successfully detected Telegram environment');
+
+      const response = await fetch('/api/auth/telegram', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.id, gameId: game.id, amount }),
+        headers: {
+          'Authorization': `tma ${initDataRaw}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка при ставке');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      setBetAmount('');
-      onBetPlaced();
+      const data = await response.json();
+      console.log('Auth response:', data);
+      
+      setUser(data.user);
+      setCurrentGame(data.currentGame);
+      setIsLoading(false);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Ошибка при ставке');
-    } finally {
-      setIsPlacingBet(false);
+      console.error('App initialization error:', error);
+      setError(error instanceof Error ? error.message : 'Ошибка инициализации');
+      setIsLoading(false);
     }
   };
 
-  const getDisplayName = (u: User) => u.username || u.firstName || `ID: ${u.id}`;
-  const formatBalance = (b: number) => b.toLocaleString();
+  const handleBetPlaced = () => {
+    // Обновляем данные игры после размещения ставки
+    fetch('/api/game/current')
+      .then(response => response.json())
+      .then(data => {
+        if (data.game) {
+          setCurrentGame(data.game);
+        }
+      })
+      .catch(error => console.error('Error updating game:', error));
+  };
 
-  // Рулетка
-  const sectors = (() => {
-    if (!game.bets.length) return [];
-    let currentAngle = 0;
-    return game.bets.map((bet, i) => {
-      const percent = (bet.amount / game.totalPool) * 100;
-      const angle = (percent / 100) * 360;
-      const sector = {
-        id: bet.user.id,
-        start: currentAngle,
-        end: currentAngle + angle,
-        color: `hsl(${(i * 137.5) % 360}, 70%, 60%)`,
-        user: bet.user,
-        percent: percent.toFixed(1),
-      };
-      currentAngle += angle;
-      return sector;
-    });
-  })();
+  const handleBackToGames = () => {
+    setSelectedGame(null);
+    setShowUsers(false);
+    setShowProfile(false);
+  };
 
+  // Показываем загрузку
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загрузка приложения...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Показываем ошибку
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-4xl mb-4">⚠️</div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Ошибка</h1>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Показываем сообщение для не-Telegram пользователей
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">🎉</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Скоро открытие</h1>
+          <p className="text-gray-600">Это приложение работает только в Telegram</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('=== Home component render ===', {
+    hasCurrentGame: !!currentGame,
+    hasUser: !!user,
+    isLoading,
+    isTelegram: true
+  });
+
+  // Основной UI
   return (
-    <div className="space-y-6">
-      {/* Таймер */}
-      <div className="text-center">
-        <div className="text-5xl font-bold text-blue-600">{timeLeft}s</div>
-        <div className="text-gray-500 text-sm">до начала розыгрыша</div>
-      </div>
-
-      {/* Ставка */}
-      <div className="flex items-center gap-3">
-        <input
-          type="number"
-          value={betAmount}
-          onChange={(e) => setBetAmount(e.target.value)}
-          placeholder="Ставка..."
-          className="flex-1 border rounded-lg px-4 py-3 text-lg focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          onClick={handlePlaceBet}
-          disabled={isPlacingBet || !betAmount || timeLeft === 0}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg"
-        >
-          {isPlacingBet ? '...' : 'Вступить'}
-        </button>
-      </div>
-      <div className="text-sm text-gray-500">
-        Баланс: {formatBalance(currentUser.balance)} ⭐
-      </div>
-
-      {/* Рулетка */}
-      <div className="relative w-64 h-64 mx-auto">
-        {/* Указатель */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-16 border-transparent border-b-red-500 z-10" />
-        <motion.div
-          className="w-full h-full rounded-full"
-          style={{ transform: `rotate(${rouletteRotation}deg)` }}
-          transition={{ duration: isGameActive ? 5 : 0.1, ease: 'easeOut' }}
-        >
-          <svg viewBox="0 0 200 200" className="w-full h-full">
-            {sectors.map((s) => {
-              const start = (s.start * Math.PI) / 180;
-              const end = (s.end * Math.PI) / 180;
-              const r = 90;
-              const x1 = 100 + r * Math.cos(start);
-              const y1 = 100 + r * Math.sin(start);
-              const x2 = 100 + r * Math.cos(end);
-              const y2 = 100 + r * Math.sin(end);
-              const largeArc = s.end - s.start > 180 ? 1 : 0;
-              return (
-                <path
-                  key={s.id}
-                  d={`M100,100 L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} Z`}
-                  fill={s.color}
-                />
-              );
-            })}
-            <circle cx="100" cy="100" r="8" fill="#111" />
-          </svg>
-        </motion.div>
-      </div>
-
-      {/* Участники */}
-      <div>
-        <h3 className="text-center font-semibold mb-2">Участники ({game.bets.length})</h3>
-        {game.bets.length === 0 ? (
-          <div className="text-center text-gray-500">⏳ Ждем игроков...</div>
-        ) : (
-          <div className="space-y-2">
-            {game.bets.map((bet, i) => (
-              <div key={bet.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">#{i + 1}</span>
-                  <span className="font-medium">{getDisplayName(bet.user)}</span>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-6 max-w-md">
+        {/* Header с профилем и балансом */}
+        {user && (
+          <div className="mb-6">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                {/* Профиль пользователя */}
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setShowProfile(true)}
+                    className="text-blue-600 text-lg font-medium hover:text-blue-700 transition-colors duration-200"
+                  >
+                    @{user.username || 'username'}
+                  </button>
                 </div>
-                <span className="font-bold text-blue-600">{formatBalance(bet.amount)} ⭐</span>
+
+                {/* Баланс звезд */}
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                  <div className="flex items-center space-x-2">
+                    <div className="text-yellow-500 text-lg">⭐</div>
+                    <div className="text-gray-900 font-bold text-lg">
+                      {user.balance.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
+            </div>
+          </div>
+        )}
+
+        {/* Список кнопок / Game Content / Users List / User Profile */}
+        {selectedGame === 'roulette' && currentGame ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">
+                🎰 Рулетка
+              </h2>
+              <button
+                onClick={handleBackToGames}
+                className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-4 py-2 transition-colors duration-200"
+              >
+                ← Назад
+              </button>
+            </div>
+            <RouletteGame
+              game={currentGame}
+              currentUser={user!}
+              onBetPlaced={handleBetPlaced}
+            />
+          </div>
+        ) : showUsers ? (
+          <UsersList onBack={handleBackToGames} />
+        ) : showProfile ? (
+          <UserProfile user={user!} onBack={handleBackToGames} />
+        ) : (
+          <div className="space-y-4">
+            {/* Список пользователей */}
+            <button
+              onClick={() => setShowUsers(true)}
+              className="w-full bg-white hover:bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <span className="text-3xl">👥</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    Список пользователей
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    Посмотреть всех участников
+                  </p>
+                </div>
+                <div className="text-blue-500 text-2xl">→</div>
+              </div>
+            </button>
+
+            {/* Рулетка */}
+            <button
+              onClick={() => setSelectedGame('roulette')}
+              className="w-full bg-white hover:bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center">
+                  <span className="text-3xl">🎰</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    Рулетка
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    Делайте ставки и выигрывайте призы!
+                  </p>
+                </div>
+                <div className="text-green-500 text-2xl">→</div>
+              </div>
+            </button>
           </div>
         )}
       </div>
-
-      {/* Ошибка */}
-      {showInsufficientFunds && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm text-center">
-            <div className="text-4xl mb-2">⚠️</div>
-            <h3 className="text-lg font-bold mb-2">Недостаточно звезд</h3>
-            <p className="text-gray-600 mb-4">Пополните баланс</p>
-            <button
-              onClick={() => setShowInsufficientFunds(false)}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg"
-            >
-              Понятно
-            </button>
-          </div>
-        </div>
-      )}
+      <DebugPanel user={user} />
     </div>
   );
 }
