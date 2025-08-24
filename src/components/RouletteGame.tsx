@@ -308,7 +308,9 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           <div className="flex space-x-2 text-xs text-gray-600">
             {sectors.map((sector) => (
               <div key={sector.id} className="text-center">
-                <div className="font-medium">ID: {sector.user.id}</div>
+                <div className="font-medium">
+                  {getDisplayName(sector.user)}
+                </div>
                 <div className="text-xs">{sector.percentage}%</div>
               </div>
             ))}
@@ -316,17 +318,17 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
         </div>
 
         {/* Визуализация рулетки */}
-        <div className="relative w-64 h-32 mx-auto">
+        <div className="relative w-64 h-64 mx-auto">
           <motion.div
             className="w-full h-full"
             style={{
               transform: `rotate(${rouletteRotation}deg)`,
-              transformOrigin: 'center bottom'
+              transformOrigin: 'center center'
             }}
             transition={{ duration: isGameActive ? 5 : 0.1, ease: "easeOut" }}
           >
-            {/* Полукруг рулетки */}
-            <svg width="100%" height="100%" viewBox="0 0 200 100">
+            {/* Круглая рулетка */}
+            <svg width="100%" height="100%" viewBox="0 0 200 200">
               <defs>
                 <linearGradient id="sectorGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#3b82f6" />
@@ -334,9 +336,11 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
                 </linearGradient>
               </defs>
               
-              {/* Фон полукруга */}
-              <path
-                d="M 100 100 A 80 80 0 0 1 20 100 L 100 100 Z"
+              {/* Фон круга */}
+              <circle
+                cx="100"
+                cy="100"
+                r="80"
                 fill="url(#sectorGradient)"
                 stroke="#1e40af"
                 strokeWidth="2"
@@ -379,6 +383,13 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           <h3 className="text-lg font-semibold text-gray-900">Участники ({game.bets?.length || 0})</h3>
         </div>
         
+        {/* Debug info */}
+        <div className="text-xs text-gray-500 mb-4">
+          Debug: bets array length = {game.bets?.length || 'undefined'}, 
+          totalPool = {game.totalPool}, 
+          game status = {game.status}
+        </div>
+        
         {!game.bets || game.bets.length === 0 ? (
           <div className="text-center py-6">
             <div className="text-4xl mb-2">⏳</div>
@@ -386,14 +397,14 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           </div>
         ) : (
           <div className="space-y-3">
-            {game.bets?.map((bet) => (
+            {game.bets.map((bet) => (
               <div
                 key={bet.id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-bold">
-                    {bet.id}
+                    {bet.user.username ? bet.user.username.charAt(0).toUpperCase() : bet.user.id}
                   </div>
                   <div>
                     <div className="font-medium text-gray-900">

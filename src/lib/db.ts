@@ -86,7 +86,7 @@ export async function getCurrentGame() {
     }
 
     // Рассчитываем общий пул
-    const totalPool = currentGame.bets.reduce((sum, bet) => sum + bet.amount, 0);
+    const totalPool = currentGame.bets.reduce((sum: number, bet: any) => sum + bet.amount, 0);
     
     // Обновляем totalPool в базе данных если он изменился
     if (currentGame.totalPool !== totalPool) {
@@ -116,26 +116,58 @@ export async function createBet(userId: number, gameId: number, amount: number) 
     throw new Error('Insufficient balance');
   }
 
-  // Create bet and update user balance in transaction
-  return await prisma.$transaction(async (tx) => {
-    const bet = await tx.bet.create({
-      data: {
-        userId,
-        gameId,
-        amount,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-            photoUrl: true,
+  // Check if user already has a bet in this game
+  const existingBet = await prisma.bet.findFirst({
+    where: {
+      userId,
+      gameId
+    }
+  });
+
+  // Create or update bet and update user balance in transaction
+  return await prisma.$transaction(async (tx: any) => {
+    let bet;
+    
+    if (existingBet) {
+      // Update existing bet
+      bet = await tx.bet.update({
+        where: { id: existingBet.id },
+        data: {
+          amount: { increment: amount }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              photoUrl: true,
+            }
           }
         }
-      }
-    });
+      });
+    } else {
+      // Create new bet
+      bet = await tx.bet.create({
+        data: {
+          userId,
+          gameId,
+          amount,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              photoUrl: true,
+            }
+          }
+        }
+      });
+    }
 
     await tx.user.update({
       where: { id: userId },
@@ -180,7 +212,7 @@ export async function finishGame(gameId: number) {
   }
 
   // Calculate winner based on bet amounts (higher bet = higher chance)
-  const totalBets = game.bets.reduce((sum, bet) => sum + bet.amount, 0);
+  const totalBets = game.bets.reduce((sum: number, bet: any) => sum + bet.amount, 0);
   let random = Math.random() * totalBets;
   
   let winner: typeof game.bets[0] | null = null;
@@ -201,12 +233,20 @@ export async function finishGame(gameId: number) {
   const prizeAmount = game.totalPool - commission;
 
   // Update winner balance and game status
-  return await prisma.$transaction(async (tx) => {
-    // Update winner balance
+  return await prisma.$transaction(async (tx: any) => {
+    // Update winner balance (winner gets the prize)
     await tx.user.update({
       where: { id: winner.userId },
       data: { balance: { increment: prizeAmount } }
     });
+
+    // Return bets to all players (they get their bets back)
+    for (const bet of game.bets) {
+      await tx.user.update({
+        where: { id: bet.userId },
+        data: { balance: { increment: bet.amount } }
+      });
+    }
 
     // Finish the game
     const finishedGame = await tx.game.update({
@@ -219,11 +259,16 @@ export async function finishGame(gameId: number) {
       }
     });
 
-    // Create new game
+    // Create new game with proper gameStartTime
+    const gameStartTime = new Date();
+    gameStartTime.setSeconds(gameStartTime.getSeconds() + 30); // Игра начнется через 30 секунд
+    
     await tx.game.create({
       data: {
         status: 'waiting',
+        gameStartTime: gameStartTime,
         totalPool: 0,
+        commission: 0,
       }
     });
 
