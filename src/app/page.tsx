@@ -7,6 +7,7 @@ import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 import UserProfile from '@/components/UserProfile';
 import GameList from '@/components/GameList';
 import RouletteGame from '@/components/RouletteGame';
+import UsersList from '@/components/UsersList';
 import DebugPanel from '@/components/DebugPanel';
 
 interface User {
@@ -53,6 +54,7 @@ export default function Home() {
   const [currentGame, setCurrentGame] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [showUsers, setShowUsers] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTelegram, setIsTelegram] = useState<boolean | null>(null);
 
@@ -160,6 +162,11 @@ export default function Home() {
     }
   };
 
+  const handleBackToGames = () => {
+    setSelectedGame(null);
+    setShowUsers(false);
+  };
+
   // --- UI ---
   if (isTelegram === null) {
     return (
@@ -231,10 +238,11 @@ export default function Home() {
           </Section>
         )}
 
+        {/* Game Content */}
         {selectedGame === 'roulette' && currentGame ? (
           <div>
             <Section header="Игра в рулетку">
-              <Button onClick={() => setSelectedGame(null)} className="mb-4">
+              <Button onClick={handleBackToGames} className="mb-4">
                 ← Назад к играм
               </Button>
             </Section>
@@ -244,8 +252,13 @@ export default function Home() {
               onBetPlaced={handleBetPlaced}
             />
           </div>
+        ) : showUsers ? (
+          <UsersList onBack={handleBackToGames} />
         ) : (
-          <GameList onGameSelect={setSelectedGame} />
+          <GameList 
+            onGameSelect={setSelectedGame} 
+            onShowUsers={() => setShowUsers(true)}
+          />
         )}
       </div>
 

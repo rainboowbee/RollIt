@@ -4,9 +4,10 @@ import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 
 interface GameListProps {
   onGameSelect: (gameId: string) => void;
+  onShowUsers: () => void;
 }
 
-export default function GameList({ onGameSelect }: GameListProps) {
+export default function GameList({ onGameSelect, onShowUsers }: GameListProps) {
   const games = [
     {
       id: 'roulette',
@@ -17,24 +18,43 @@ export default function GameList({ onGameSelect }: GameListProps) {
   ];
 
   return (
-    <Section header="Доступные игры">
-      {games.map((game) => (
+    <>
+      <Section header="Доступные игры">
+        {games.map((game) => (
+          <Cell
+            key={game.id}
+            before={game.icon}
+            subtitle={game.description}
+            after={
+              <Button
+                onClick={() => onGameSelect(game.id)}
+                size="s"
+              >
+                Играть
+              </Button>
+            }
+          >
+            {game.name}
+          </Cell>
+        ))}
+      </Section>
+
+      <Section header="Дополнительно">
         <Cell
-          key={game.id}
-          before={game.icon}
-          subtitle={game.description}
+          before="👥"
+          subtitle="Посмотреть всех участников"
           after={
             <Button
-              onClick={() => onGameSelect(game.id)}
+              onClick={onShowUsers}
               size="s"
             >
-              Играть
+              Открыть
             </Button>
           }
         >
-          {game.name}
+          Список пользователей
         </Cell>
-      ))}
-    </Section>
+      </Section>
+    </>
   );
 }
