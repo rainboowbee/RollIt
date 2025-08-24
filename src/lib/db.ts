@@ -48,6 +48,7 @@ export async function createOrUpdateUser(telegramUser: {
         lastName: telegramUser.last_name,
         photoUrl: telegramUser.photo_url,
         balance: 1000,
+        createdAt: new Date(),
       },
     });
     
@@ -329,6 +330,7 @@ export async function finishGame(gameId: number): Promise<{
       gameStartTime: gameStartTime,
       totalPool: 0,
       commission: 0,
+      createdAt: new Date(),
     }
   });
 

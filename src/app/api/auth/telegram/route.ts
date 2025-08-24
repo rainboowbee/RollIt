@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
           gameStartTime: gameStartTime,
           totalPool: 0,
           commission: 0,
+          createdAt: new Date(),
         },
       });
       

@@ -16,10 +16,15 @@ export async function initializeDatabase() {
 
     if (!existingGame) {
       // Create initial game
+      const gameStartTime = new Date();
+      gameStartTime.setSeconds(gameStartTime.getSeconds() + 30); // Игра начнется через 30 секунд
+      
       const game = await prisma.game.create({
         data: {
           status: 'waiting',
           totalPool: 0,
+          gameStartTime: gameStartTime,
+          commission: 0,
         }
       });
 
