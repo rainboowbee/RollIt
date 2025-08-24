@@ -20,28 +20,27 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
   
   return (
     <div className="space-y-6">
-
       {/* Балансы */}
       <div className="grid grid-cols-2 gap-4">
         {/* Баланс звезд */}
-        <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 backdrop-blur-md rounded-2xl p-6 border border-cyan-400/50 shadow-lg shadow-cyan-400/20">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
           <div className="text-center">
-            <div className="text-4xl mb-3">⭐</div>
-            <h4 className="text-lg font-semibold text-cyan-200 mb-2">Баланс</h4>
-            <div className="text-3xl font-bold text-white mb-1">
+            <h4 className="text-sm font-medium text-gray-600 mb-3">Баланс</h4>
+            <div className="text-4xl font-bold text-gray-900 mb-2">
               {user.balance.toLocaleString()}
             </div>
+            <div className="text-2xl">⭐</div>
           </div>
         </div>
 
         {/* Roll Point */}
-        <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-md rounded-2xl p-6 border border-purple-400/50 shadow-lg shadow-purple-400/20">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
           <div className="text-center">
-            <div className="text-4xl mb-3">🎯</div>
-            <h4 className="text-lg font-semibold text-purple-200 mb-2">RollPoint</h4>
-            <div className="text-3xl font-bold text-white mb-1">
+            <h4 className="text-sm font-medium text-gray-600 mb-3">RollPoint</h4>
+            <div className="text-4xl font-bold text-gray-900 mb-2">
               {(user.balance * 1.254).toFixed(0)}
             </div>
+            <div className="text-2xl">🎯</div>
           </div>
         </div>
       </div>
@@ -49,7 +48,7 @@ export default function UserProfile({ user, onBack }: UserProfileProps) {
       {/* Кнопка главное меню */}
       <button
         onClick={onBack}
-        className="w-full bg-gradient-to-r from-slate-600/50 to-slate-700/50 hover:from-slate-500/50 hover:to-slate-600/50 backdrop-blur-md rounded-2xl p-4 border border-slate-400/30 text-white font-semibold text-lg transition-all duration-200 hover:shadow-lg hover:shadow-slate-400/20 hover:scale-105"
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg rounded-xl p-4 transition-colors duration-200"
       >
         Главное меню
       </button>

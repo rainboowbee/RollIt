@@ -227,28 +227,28 @@ export default function Home() {
 
   // Основной UI
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900">
+    <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-6 max-w-md">
         {/* Header с профилем и балансом */}
         {user && (
           <div className="mb-6">
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-cyan-400/30 shadow-lg shadow-cyan-400/20">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 {/* Профиль пользователя */}
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={() => setShowProfile(true)}
-                    className="text-cyan-300 text-lg font-medium hover:text-cyan-200 transition-colors duration-200"
+                    className="text-blue-600 text-lg font-medium hover:text-blue-700 transition-colors duration-200"
                   >
                     @{user.username || 'username'}
                   </button>
                 </div>
 
                 {/* Баланс звезд */}
-                <div className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-sm rounded-lg p-2 border border-cyan-400/50 shadow-lg shadow-cyan-400/20">
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                   <div className="flex items-center space-x-2">
-                    <div className="text-yellow-400 text-lg">⭐</div>
-                    <div className="text-white font-bold text-lg">
+                    <div className="text-yellow-500 text-lg">⭐</div>
+                    <div className="text-gray-900 font-bold text-lg">
                       {user.balance.toLocaleString()}
                     </div>
                   </div>
@@ -258,16 +258,16 @@ export default function Home() {
           </div>
         )}
 
-        {/* Список кнопок */}
+        {/* Список кнопок / Game Content / Users List / User Profile */}
         {selectedGame === 'roulette' && currentGame ? (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">
+              <h2 className="text-2xl font-bold text-gray-900">
                 🎰 Рулетка
               </h2>
-              <button 
-                onClick={handleBackToGames} 
-                className="bg-gradient-to-r from-slate-600/50 to-slate-700/50 hover:from-slate-500/50 hover:to-slate-600/50 backdrop-blur-sm rounded-xl px-4 py-2 border border-slate-400/30 text-white transition-all duration-200 hover:shadow-lg hover:shadow-slate-400/20"
+              <button
+                onClick={handleBackToGames}
+                className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-4 py-2 transition-colors duration-200"
               >
                 ← Назад
               </button>
@@ -287,49 +287,47 @@ export default function Home() {
             {/* Список пользователей */}
             <button
               onClick={() => setShowUsers(true)}
-              className="w-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-400/30 hover:to-blue-400/30 backdrop-blur-md rounded-2xl p-6 border border-cyan-400/50 shadow-lg shadow-cyan-400/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-cyan-400/30"
+              className="w-full bg-white hover:bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md"
             >
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-400/50">
+                <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center">
                   <span className="text-3xl">👥</span>
                 </div>
                 <div className="flex-1 text-left">
-                  <h3 className="text-xl font-bold text-white mb-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
                     Список пользователей
                   </h3>
-                  <p className="text-cyan-200 text-sm">
+                  <p className="text-gray-600 text-sm">
                     Посмотреть всех участников
                   </p>
                 </div>
-                <div className="text-cyan-400 text-2xl">→</div>
+                <div className="text-blue-500 text-2xl">→</div>
               </div>
             </button>
 
             {/* Рулетка */}
             <button
               onClick={() => setSelectedGame('roulette')}
-              className="w-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-400/30 hover:to-pink-400/30 backdrop-blur-md rounded-2xl p-6 border border-purple-400/50 shadow-lg shadow-purple-400/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-400/30"
+              className="w-full bg-white hover:bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md"
             >
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-400/50">
+                <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center">
                   <span className="text-3xl">🎰</span>
                 </div>
                 <div className="flex-1 text-left">
-                  <h3 className="text-xl font-bold text-white mb-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
                     Рулетка
                   </h3>
-                  <p className="text-purple-200 text-sm">
+                  <p className="text-gray-600 text-sm">
                     Делайте ставки и выигрывайте призы!
                   </p>
                 </div>
-                <div className="text-purple-400 text-2xl">→</div>
+                <div className="text-green-500 text-2xl">→</div>
               </div>
             </button>
           </div>
         )}
       </div>
-
-      {/* Debug Panel */}
       <DebugPanel user={user} />
     </div>
   );
