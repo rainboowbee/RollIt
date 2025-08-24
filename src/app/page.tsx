@@ -122,6 +122,9 @@ export default function Home() {
         console.log('Init data user:', initDataUser);
         console.log('Launch params:', launchParams);
         console.log('tgWebAppData:', launchParams.tgWebAppData);
+        console.log('tgWebAppData.user:', launchParams.tgWebAppData?.user);
+        console.log('tgWebAppData.hash:', launchParams.tgWebAppData?.hash);
+        console.log('tgWebAppData.auth_date:', launchParams.tgWebAppData?.auth_date);
 
         // Wait for launch params to be available
         if (!launchParams.tgWebAppData) {
@@ -131,14 +134,40 @@ export default function Home() {
 
         console.log('Starting authentication...');
         
-        // Authenticate user using tgWebAppData from launch params
+        // Convert launchParams.tgWebAppData object to URL search params string
+        const initDataString = new URLSearchParams();
+        
+        // Add all properties from tgWebAppData
+        if (launchParams.tgWebAppData.user) {
+          initDataString.append('user', JSON.stringify(launchParams.tgWebAppData.user));
+        }
+        if (launchParams.tgWebAppData.chat_instance) {
+          initDataString.append('chat_instance', launchParams.tgWebAppData.chat_instance);
+        }
+        if (launchParams.tgWebAppData.chat_type) {
+          initDataString.append('chat_type', launchParams.tgWebAppData.chat_type);
+        }
+        if (launchParams.tgWebAppData.auth_date) {
+          initDataString.append('auth_date', launchParams.tgWebAppData.auth_date.toString());
+        }
+        if (launchParams.tgWebAppData.signature) {
+          initDataString.append('signature', launchParams.tgWebAppData.signature);
+        }
+        if (launchParams.tgWebAppData.hash) {
+          initDataString.append('hash', launchParams.tgWebAppData.hash);
+        }
+        
+        const initDataUrlString = initDataString.toString();
+        console.log('Converted initData string:', initDataUrlString);
+        
+        // Authenticate user using converted initData string
         const response = await fetch('/api/auth/telegram', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            initData: launchParams.tgWebAppData,
+            initData: initDataUrlString,
           }),
         });
 
