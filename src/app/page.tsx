@@ -5,7 +5,6 @@ import { isTMA, retrieveRawInitData } from '@telegram-apps/sdk-react';
 import { Button } from '@telegram-apps/telegram-ui';
 
 import UserProfile from '@/components/UserProfile';
-import GameList from '@/components/GameList';
 import RouletteGame from '@/components/RouletteGame';
 import UsersList from '@/components/UsersList';
 import DebugPanel from '@/components/DebugPanel';
@@ -39,6 +38,7 @@ interface Game {
   status: string;
   totalPool: number;
   createdAt: string;
+  gameStartTime?: string;
   bets: Bet[];
   winnerId?: number | null;
   winner?: {
@@ -273,7 +273,10 @@ export default function Home() {
               </button>
             </div>
             <RouletteGame
-              game={currentGame}
+              game={{
+                ...currentGame,
+                gameStartTime: currentGame.gameStartTime ?? currentGame.createdAt,
+              }}
               currentUser={user!}
               onBetPlaced={handleBetPlaced}
             />

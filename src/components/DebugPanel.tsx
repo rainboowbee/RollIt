@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { initData, useSignal, retrieveRawInitData } from '@telegram-apps/sdk-react';
-import { Button } from '@telegram-apps/telegram-ui';
 
 interface User {
   id: number;

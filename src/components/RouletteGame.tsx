@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Input } from '@telegram-apps/telegram-ui';
 
 interface User {
   id: number;
@@ -32,6 +31,7 @@ interface Game {
   status: string;
   totalPool: number;
   createdAt: string;
+  gameStartTime: string;
   bets: Bet[];
   winnerId?: number | null;
   winner?: {
@@ -51,6 +51,43 @@ interface RouletteGameProps {
 export default function RouletteGame({ game, currentUser, onBetPlaced }: RouletteGameProps) {
   const [betAmount, setBetAmount] = useState('');
   const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isGameActive, setIsGameActive] = useState(false);
+  const [rouletteRotation, setRouletteRotation] = useState(0);
+  const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
+
+  // Глобальный таймер игры на основе gameStartTime
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const gameStart = new Date(game.gameStartTime).getTime();
+      const timeUntilStart = Math.max(0, Math.floor((gameStart - now) / 1000));
+      
+      setTimeLeft(timeUntilStart);
+      
+      if (timeUntilStart === 0 && !isGameActive) {
+        setIsGameActive(true);
+        // Запускаем быстрое вращение рулетки
+        setRouletteRotation(prev => prev + 3600); // 10 полных оборотов
+      }
+    };
+
+    // Обновляем таймер каждую секунду
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(timer);
+  }, [game.gameStartTime, isGameActive]);
+
+  // Медленное вращение рулетки во время ожидания
+  useEffect(() => {
+    if (!isGameActive) {
+      const interval = setInterval(() => {
+        setRouletteRotation(prev => prev + 1);
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [isGameActive]);
 
   const handlePlaceBet = async () => {
     if (!betAmount || isNaN(Number(betAmount))) {
@@ -59,8 +96,14 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     }
 
     const amount = Number(betAmount);
-    if (amount <= 0 || amount > currentUser.balance) {
-      alert('Недостаточно средств для ставки');
+    if (amount <= 0) {
+      alert('Сумма ставки должна быть больше 0');
+      return;
+    }
+
+    if (amount > currentUser.balance) {
+      setShowInsufficientFunds(true);
+      setTimeout(() => setShowInsufficientFunds(false), 3000);
       return;
     }
 
@@ -100,81 +143,206 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
     return balance.toLocaleString();
   };
 
+  // Расчет процента выигрыша для текущего пользователя
+  const currentUserBet = game.bets.find(bet => bet.user.id === currentUser.id);
+  const currentUserWinPercentage = currentUserBet 
+    ? ((currentUserBet.amount / game.totalPool) * 100).toFixed(1)
+    : '0.0';
+
+  // Создание секторов рулетки
+  const createRouletteSectors = (): Array<{
+    id: number;
+    startAngle: number;
+    endAngle: number;
+    percentage: string;
+    color: string;
+    user: {
+      id: number;
+      username?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      photoUrl?: string | null;
+    };
+  }> => {
+    if (game.bets.length === 0) return [];
+    
+    const sectors: Array<{
+      id: number;
+      startAngle: number;
+      endAngle: number;
+      percentage: string;
+      color: string;
+      user: {
+        id: number;
+        username?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        photoUrl?: string | null;
+      };
+    }> = [];
+    let currentAngle = 0;
+    
+    game.bets.forEach((bet, index) => {
+      const percentage = (bet.amount / game.totalPool) * 100;
+      const angle = (percentage / 100) * 360;
+      
+      sectors.push({
+        id: bet.user.id,
+        startAngle: currentAngle,
+        endAngle: currentAngle + angle,
+        percentage: percentage.toFixed(1),
+        color: `hsl(${(index * 137.5) % 360}, 70%, 60%)`,
+        user: bet.user
+      });
+      
+      currentAngle += angle;
+    });
+    
+    return sectors;
+  };
+
+  const sectors = createRouletteSectors();
+
   return (
     <div className="space-y-6">
-      {/* Статус игры */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <div className="text-center">
-          <div className="text-4xl mb-3">🎰</div>
-          <h3 className="text-xl font-bold text-gray-900 mb-3">
-            Игра #{game.id}
-          </h3>
-          <div className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium mb-3">
-            {game.status === 'waiting' ? '⏳ Ожидание' : 
-             game.status === 'active' ? '🎯 Активна' : '🏁 Завершена'}
+      {/* Header с username и таймером */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="text-blue-600 text-lg font-medium">
+            {currentUser.username ? `@${currentUser.username}` : `ID: ${currentUser.id}`}
           </div>
-          <div className="text-2xl font-bold text-blue-600 mb-1">
-            {formatBalance(game.totalPool)} ⭐
-          </div>
-          <div className="text-gray-600 text-sm">
-            Общий пул
+          <div className="text-2xl font-bold text-gray-900">
+            {timeLeft}s
           </div>
         </div>
       </div>
 
-      {/* Баланс пользователя */}
+      {/* Блок ставки */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <div className="text-center">
-          <div className="text-3xl mb-2">💰</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Ваш баланс
-          </h3>
-          <div className="text-2xl font-bold text-green-600 mb-1">
-            {formatBalance(currentUser.balance)} ⭐
-          </div>
-          <div className="text-gray-600 text-sm">
-            Доступно для ставок
-          </div>
-        </div>
-      </div>
-
-      {/* Размещение ставки */}
-      {game.status === 'waiting' && (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="text-center mb-4">
-            <div className="text-3xl mb-2">🎲</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Разместить ставку
-            </h3>
-          </div>
-          <div className="space-y-4">
-            <Input
+        <div className="flex items-center space-x-4 mb-4">
+          {/* Поле ввода ставки */}
+          <div className="flex-1">
+            <input
               type="number"
-              placeholder="Сумма ставки"
+              placeholder="Звезды..."
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
               min="1"
               max={currentUser.balance}
-              className="text-center text-lg bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
-            <button
-              onClick={handlePlaceBet}
-              disabled={isPlacingBet || !betAmount}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-xl transition-colors duration-200 disabled:cursor-not-allowed"
-            >
-              {isPlacingBet ? '🎯 Размещение...' : '🎯 Сделать ставку'}
-            </button>
+            <div className="text-sm text-gray-500 mt-2">
+              Баланс: {formatBalance(currentUser.balance)} ⭐
+            </div>
+          </div>
+          
+          {/* Кнопка вступить */}
+          <button
+            onClick={handlePlaceBet}
+            disabled={isPlacingBet || !betAmount || timeLeft === 0}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
+          >
+            {isPlacingBet ? 'Вступление...' : 'Вступить'}
+          </button>
+        </div>
+
+        {/* Общий пул и процент выигрыша */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {formatBalance(game.totalPool)}
+            </div>
+            <div className="text-sm text-gray-600">Общий пул</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {currentUserWinPercentage}%
+            </div>
+            <div className="text-sm text-gray-600">Процент выигрыша</div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Рулетка */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <div className="text-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Рулетка</h3>
+        </div>
+        
+        {/* ID пользователей над рулеткой */}
+        <div className="flex justify-center mb-4">
+          <div className="flex space-x-2 text-xs text-gray-600">
+            {sectors.map((sector, index) => (
+              <div key={sector.id} className="text-center">
+                <div className="font-medium">ID: {sector.user.id}</div>
+                <div className="text-xs">{sector.percentage}%</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Визуализация рулетки */}
+        <div className="relative w-64 h-32 mx-auto">
+          <motion.div
+            className="w-full h-full"
+            style={{
+              transform: `rotate(${rouletteRotation}deg)`,
+              transformOrigin: 'center bottom'
+            }}
+            transition={{ duration: isGameActive ? 5 : 0.1, ease: "easeOut" }}
+          >
+            {/* Полукруг рулетки */}
+            <svg width="100%" height="100%" viewBox="0 0 200 100">
+              <defs>
+                <linearGradient id="sectorGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#1d4ed8" />
+                </linearGradient>
+              </defs>
+              
+              {/* Фон полукруга */}
+              <path
+                d="M 100 100 A 80 80 0 0 1 20 100 L 100 100 Z"
+                fill="url(#sectorGradient)"
+                stroke="#1e40af"
+                strokeWidth="2"
+              />
+              
+              {/* Секторы */}
+              {sectors.map((sector, index) => {
+                const startAngle = (sector.startAngle * Math.PI) / 180;
+                const endAngle = (sector.endAngle * Math.PI) / 180;
+                const radius = 80;
+                
+                const x1 = 100 + radius * Math.cos(startAngle);
+                const y1 = 100 - radius * Math.sin(startAngle);
+                const x2 = 100 + radius * Math.cos(endAngle);
+                const y2 = 100 - radius * Math.sin(endAngle);
+                
+                const largeArcFlag = sector.endAngle - sector.startAngle > 180 ? 1 : 0;
+                
+                return (
+                  <path
+                    key={sector.id}
+                    d={`M 100 100 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
+                    fill={sector.color}
+                    stroke="#1e40af"
+                    strokeWidth="1"
+                  />
+                );
+              })}
+              
+              {/* Центральная точка */}
+              <circle cx="100" cy="100" r="8" fill="#1e40af" />
+            </svg>
+          </motion.div>
+        </div>
+      </div>
 
       {/* Участники */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <div className="text-center mb-4">
-          <div className="text-2xl mb-2">👥</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Участники ({game.bets.length})
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900">Участники ({game.bets.length})</h3>
         </div>
         
         {game.bets.length === 0 ? (
@@ -215,32 +383,26 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
         )}
       </div>
 
-      {/* Победитель */}
-      {game.status === 'finished' && game.winner && (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <motion.div
-            initial={{ scale: 0, rotate: 0 }}
-            animate={{ scale: 1, rotate: 360 }}
-            transition={{ duration: 1, type: "spring" }}
-            className="text-center"
-          >
-            <div className="text-5xl mb-3">🎉</div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              Победитель!
-            </h3>
-            <div className="bg-yellow-100 rounded-full p-4 mb-4 border border-yellow-200">
-              <div className="text-4xl">👑</div>
+      {/* Всплывающее окно недостаточно звезд */}
+      {showInsufficientFunds && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 mx-4 max-w-sm">
+            <div className="text-center">
+              <div className="text-4xl mb-4">⚠️</div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Недостаточно звезд
+              </h3>
+              <p className="text-gray-600 mb-4">
+                У вас недостаточно звезд для этой ставки
+              </p>
+              <button
+                onClick={() => setShowInsufficientFunds(false)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200"
+              >
+                Понятно
+              </button>
             </div>
-            <div className="text-xl font-semibold text-gray-900 mb-2">
-              {getDisplayName(game.winner)}
-            </div>
-            <div className="text-2xl font-bold text-yellow-600 mb-1">
-              {formatBalance(game.totalPool)} ⭐
-            </div>
-            <div className="text-gray-600 text-sm">
-              Выигрыш
-            </div>
-          </motion.div>
+          </div>
         </div>
       )}
     </div>

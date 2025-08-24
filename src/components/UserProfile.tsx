@@ -16,8 +16,6 @@ interface UserProfileProps {
 }
 
 export default function UserProfile({ user, onBack }: UserProfileProps) {
-  const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Пользователь';
-  
   return (
     <div className="space-y-6">
       {/* Балансы */}

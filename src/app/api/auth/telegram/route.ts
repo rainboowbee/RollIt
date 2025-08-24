@@ -57,13 +57,22 @@ export async function POST(request: NextRequest) {
     console.log('User created/updated:', user);
 
     let currentGame = await getCurrentGame();
+    // Создаем новую игру если нет активной
     if (!currentGame) {
-      console.log('No current game found, creating new one...');
+      const gameStartTime = new Date();
+      gameStartTime.setSeconds(gameStartTime.getSeconds() + 30); // Игра начнется через 30 секунд
+      
       await prisma.game.create({
-        data: { status: 'waiting', totalPool: 0 },
+        data: {
+          status: 'waiting',
+          gameStartTime: gameStartTime,
+          totalPool: 0,
+          commission: 0,
+        },
       });
+      
+      // Получаем созданную игру с relations
       currentGame = await getCurrentGame();
-      console.log('New game created:', currentGame);
     } else {
       console.log('Current game found:', currentGame);
     }

@@ -26,16 +26,16 @@ model User {
 }
 
 model Game {
-  id          Int      @id @default(autoincrement())
-  status      String   @default("waiting") // waiting, active, finished
-  createdAt   DateTime @default(now())
-  finishedAt  DateTime?
-  totalPool   Int      @default(0)
-  commission  Int      @default(0)
-  
-  bets        Bet[]
-  winnerId    Int?
-  winner      User?    @relation("GameWinner", fields: [winnerId], references: [id])
+  id Int @id @default(autoincrement())
+  status String @default("waiting")
+  createdAt DateTime @default(now())
+  gameStartTime DateTime @default(dbgenerated("(now() + interval '30 seconds')"))
+  finishedAt DateTime?
+  totalPool Int @default(0)
+  commission Int @default(0)
+  bets Bet[]
+  winnerId Int?
+  winner User? @relation("GameWinner", fields: [winnerId], references: [id])
 }
 
 model Bet {

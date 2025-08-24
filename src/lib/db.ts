@@ -46,32 +46,64 @@ export async function createOrUpdateUser(telegramUser: {
 }
 
 export async function getCurrentGame() {
-  return await prisma.game.findFirst({
-    where: {
-      OR: [
-        { status: 'waiting' },
-        { status: 'active' }
-      ]
-    },
-    include: {
-      bets: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              firstName: true,
-              lastName: true,
-              photoUrl: true,
+  try {
+    const currentGame = await prisma.game.findFirst({
+      where: {
+        status: {
+          in: ['waiting', 'active']
+        }
+      },
+      include: {
+        bets: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                firstName: true,
+                lastName: true,
+                photoUrl: true,
+              }
             }
           }
+        },
+        winner: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+          }
         }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
-    },
-    orderBy: {
-      createdAt: 'desc'
+    });
+
+    if (!currentGame) {
+      return null;
     }
-  });
+
+    // Рассчитываем общий пул
+    const totalPool = currentGame.bets.reduce((sum, bet) => sum + bet.amount, 0);
+    
+    // Обновляем totalPool в базе данных если он изменился
+    if (currentGame.totalPool !== totalPool) {
+      await prisma.game.update({
+        where: { id: currentGame.id },
+        data: { totalPool }
+      });
+    }
+
+    return {
+      ...currentGame,
+      totalPool
+    };
+  } catch (error) {
+    console.error('Error getting current game:', error);
+    return null;
+  }
 }
 
 export async function createBet(userId: number, gameId: number, amount: number) {
