@@ -51,14 +51,21 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
   const currentGame = realtimeGame || game;
   const totalPool = useMemo(() => realtimeTotalPool || game.totalPool, [realtimeTotalPool, game.totalPool]);
   const bets = useMemo(() => realtimeBets || game.bets || [], [realtimeBets, game.bets]);
-  const timeUntilStart = useMemo(() => realtimeTimeUntilStart ?? game.timeUntilStart ?? 0, [realtimeTimeUntilStart, game.timeUntilStart]);
+  const timeUntilStart = useMemo(() => {
+    // Если игра уже активна или завершена, не показываем таймер
+    if (isGameActive || currentGame.status !== 'waiting') {
+      return 0;
+    }
+    return realtimeTimeUntilStart ?? game.timeUntilStart ?? 0;
+  }, [realtimeTimeUntilStart, game.timeUntilStart, isGameActive, currentGame.status]);
 
   // Таймер игры
   useEffect(() => {
     if (!currentGame) return;
     
     const updateTimer = () => {
-      if (timeUntilStart <= 0 && !isGameActive) {
+      // Проверяем, что игра в статусе 'waiting' и таймер истек
+      if (timeUntilStart <= 0 && !isGameActive && currentGame.status === 'waiting') {
         console.log('Game timer expired, starting game!');
         setIsGameActive(true);
         // Запускаем быстрое вращение рулетки
@@ -94,11 +101,21 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
               
               // Обновляем данные игры и пользователя
               onBetPlaced();
+              
+              // Сбрасываем состояние игры и ждем обновления данных
+              setIsGameActive(false);
+              
+              // Принудительно обновляем данные игры через небольшую задержку
+              setTimeout(() => {
+                onBetPlaced();
+              }, 1000);
             } else {
               console.error('Failed to finish game');
+              setIsGameActive(false);
             }
           } catch (error) {
             console.error('Error finishing game:', error);
+            setIsGameActive(false);
           }
         }, 5000);
       }
@@ -294,9 +311,10 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
             <div className="text-2xl font-bold text-gray-900">
               {formatTime(timeUntilStart)}
             </div>
-            <div className={`text-sm ${isGameActive ? 'text-red-600' : 'text-green-600'}`}>
-              {isGameActive ? '🎰 Игра активна!' : '⏳ Ожидание...'}
-            </div>
+                       <div className={`text-sm ${isGameActive ? 'text-red-600' : 'text-green-600'}`}>
+             {isGameActive ? '🎰 Игра активна!' : 
+              currentGame.status === 'waiting' ? '⏳ Ожидание...' : '🎯 Игра завершена'}
+           </div>
           </div>
         </div>
       </div>
@@ -321,16 +339,16 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
           </div>
           
           {/* Кнопка вступить */}
-          <button
-            onClick={handlePlaceBet}
-            disabled={isPlacingBet || !betAmount || timeUntilStart === 0 || isGameActive}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
-          >
-            {isPlacingBet ? 'Вступление...' : 
-             isGameActive ? 'Игра активна' : 
-             timeUntilStart === 0 ? 'Время вышло' : 
-             'Вступить'}
-          </button>
+                     <button
+             onClick={handlePlaceBet}
+             disabled={isPlacingBet || !betAmount || currentGame.status !== 'waiting' || isGameActive}
+             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
+           >
+             {isPlacingBet ? 'Вступление...' : 
+              isGameActive ? 'Игра активна' : 
+              currentGame.status !== 'waiting' ? 'Игра завершена' : 
+              'Вступить'}
+           </button>
         </div>
 
         {/* Общий пул и процент выигрыша */}

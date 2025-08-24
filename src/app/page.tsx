@@ -123,6 +123,7 @@ export default function Home() {
               maxBet: 0
             }
           };
+          console.log('Updated game data:', gameWithDefaults);
           setCurrentGame(gameWithDefaults);
         }
       })

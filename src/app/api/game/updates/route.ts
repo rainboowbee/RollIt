@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
                 firstName: game.winner.firstName,
                 lastName: game.winner.lastName,
               } : null,
-              timeUntilStart: 0, // Будет рассчитано на клиенте
+              timeUntilStart: Math.max(0, Math.floor((new Date(game.gameStartTime).getTime() - Date.now()) / 1000)),
               gameStatus: game.status,
               stats: {
                 totalBets: game.bets.length,
