@@ -26,7 +26,7 @@ export default function UserProfile({ user }: UserProfileProps) {
         <div className="relative">
           <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 p-0.5">
             <Avatar
-              size={60}
+              size={48}
               src={user.photoUrl || undefined}
               className="w-full h-full rounded-full"
             />
