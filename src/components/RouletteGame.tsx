@@ -49,6 +49,13 @@ interface RouletteGameProps {
 }
 
 export default function RouletteGame({ game, currentUser, onBetPlaced }: RouletteGameProps) {
+  const [betAmount, setBetAmount] = useState('');
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isGameActive, setIsGameActive] = useState(false);
+  const [rouletteRotation, setRouletteRotation] = useState(0);
+  const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
+
   // Проверяем, что game существует
   if (!game) {
     return (
@@ -58,13 +65,6 @@ export default function RouletteGame({ game, currentUser, onBetPlaced }: Roulett
       </div>
     );
   }
-
-  const [betAmount, setBetAmount] = useState('');
-  const [isPlacingBet, setIsPlacingBet] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [isGameActive, setIsGameActive] = useState(false);
-  const [rouletteRotation, setRouletteRotation] = useState(0);
-  const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
 
   // Глобальный таймер игры на основе gameStartTime
   useEffect(() => {

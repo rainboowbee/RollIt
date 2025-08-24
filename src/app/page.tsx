@@ -97,6 +97,9 @@ export default function Home() {
       console.log('Auth response:', data);
       console.log('Current game data:', data.currentGame);
       
+      // Устанавливаем пользователя
+      setUser(data.user);
+      
       // Проверяем структуру currentGame
       if (data.currentGame && typeof data.currentGame === 'object') {
         // Убеждаемся, что bets всегда является массивом
