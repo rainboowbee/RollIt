@@ -6,20 +6,38 @@ export async function POST(request: NextRequest) {
   try {
     console.log('=== Telegram Auth API Called ===');
     
-    const body = await request.json();
-    console.log('Request body:', body);
+    // Get init data from Authorization header
+    const authHeader = request.headers.get('authorization');
+    console.log('Authorization header:', authHeader);
     
-    const { initData } = body;
-
-    if (!initData) {
-      console.error('No initData provided');
+    if (!authHeader) {
+      console.error('No Authorization header provided');
       return NextResponse.json(
-        { error: 'Init data is required' },
+        { error: 'Authorization header is required' },
         { status: 400 }
       );
     }
 
-    console.log('InitData received:', initData);
+    // Parse Authorization header: "tma <init-data>"
+    const [authType, initData] = authHeader.split(' ');
+    
+    if (authType !== 'tma') {
+      console.error('Invalid authorization type:', authType);
+      return NextResponse.json(
+        { error: 'Invalid authorization type. Expected "tma"' },
+        { status: 400 }
+      );
+    }
+
+    if (!initData) {
+      console.error('No init data in Authorization header');
+      return NextResponse.json(
+        { error: 'Init data is required in Authorization header' },
+        { status: 400 }
+      );
+    }
+
+    console.log('InitData received from header:', initData);
 
     // Validate init data
     const botToken = process.env.TELEGRAM_BOT_TOKEN;

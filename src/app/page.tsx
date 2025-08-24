@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { initData, useSignal, isTMA, useLaunchParams } from '@telegram-apps/sdk-react';
+import { initData, useSignal, isTMA, retrieveRawInitData } from '@telegram-apps/sdk-react';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 
 import UserProfile from '@/components/UserProfile';
@@ -57,15 +57,13 @@ export default function Home() {
 
   // Use official Telegram SDK signals
   const initDataUser = useSignal(initData.user);
-  const launchParams = useLaunchParams();
 
   console.log('=== Home component render ===', {
     isTelegram,
     isLoading,
     hasUser: !!user,
     hasCurrentGame: !!currentGame,
-    launchParamsAvailable: !!launchParams.tgWebAppData,
-    launchParams: launchParams
+    initDataUser: initDataUser
   });
 
   // Check if we're in Telegram Mini App
@@ -102,7 +100,7 @@ export default function Home() {
     console.log('=== Second useEffect (initialization) ===', {
       isTelegram,
       isLoading,
-      hasLaunchParams: !!launchParams.tgWebAppData
+      hasInitDataUser: !!initDataUser
     });
     
     if (isTelegram === null) return; // Still checking
@@ -112,63 +110,39 @@ export default function Home() {
     }
 
     console.log('=== Telegram environment confirmed, starting initialization ===');
-    console.log('Current launch params:', launchParams);
-    console.log('tgWebAppData available:', !!launchParams.tgWebAppData);
-    console.log('tgWebAppData value:', launchParams.tgWebAppData);
 
     const initializeApp = async () => {
       try {
         console.log('=== Initializing RollIt App in Telegram ===');
         console.log('Init data user:', initDataUser);
-        console.log('Launch params:', launchParams);
-        console.log('tgWebAppData:', launchParams.tgWebAppData);
-        console.log('tgWebAppData.user:', launchParams.tgWebAppData?.user);
-        console.log('tgWebAppData.hash:', launchParams.tgWebAppData?.hash);
-        console.log('tgWebAppData.auth_date:', launchParams.tgWebAppData?.auth_date);
 
-        // Wait for launch params to be available
-        if (!launchParams.tgWebAppData) {
-          console.log('Waiting for launch params...');
+        // Wait for init data user to be available
+        if (!initDataUser) {
+          console.log('Waiting for init data user...');
           return;
         }
 
         console.log('Starting authentication...');
         
-        // Convert launchParams.tgWebAppData object to URL search params string
-        const initDataString = new URLSearchParams();
+        // Get raw init data using the official SDK method
+        const initDataRaw = retrieveRawInitData();
+        console.log('Raw init data:', initDataRaw);
         
-        // Add all properties from tgWebAppData
-        if (launchParams.tgWebAppData.user) {
-          initDataString.append('user', JSON.stringify(launchParams.tgWebAppData.user));
-        }
-        if (launchParams.tgWebAppData.chat_instance) {
-          initDataString.append('chat_instance', launchParams.tgWebAppData.chat_instance);
-        }
-        if (launchParams.tgWebAppData.chat_type) {
-          initDataString.append('chat_type', launchParams.tgWebAppData.chat_type);
-        }
-        if (launchParams.tgWebAppData.auth_date) {
-          initDataString.append('auth_date', launchParams.tgWebAppData.auth_date.toString());
-        }
-        if (launchParams.tgWebAppData.signature) {
-          initDataString.append('signature', launchParams.tgWebAppData.signature);
-        }
-        if (launchParams.tgWebAppData.hash) {
-          initDataString.append('hash', launchParams.tgWebAppData.hash);
+        if (!initDataRaw) {
+          console.error('No raw init data available');
+          setError('Не удалось получить данные инициализации');
+          setIsLoading(false);
+          return;
         }
         
-        const initDataUrlString = initDataString.toString();
-        console.log('Converted initData string:', initDataUrlString);
-        
-        // Authenticate user using converted initData string
+        // Authenticate user using raw init data in Authorization header
         const response = await fetch('/api/auth/telegram', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `tma ${initDataRaw}`
           },
-          body: JSON.stringify({
-            initData: initDataUrlString,
-          }),
+          body: JSON.stringify({}), // Empty body since we send data in header
         });
 
         if (!response.ok) {
@@ -205,36 +179,36 @@ export default function Home() {
     };
 
     // Initialize when we have the required data
-    if (launchParams.tgWebAppData) {
-      console.log('Launch params available, starting initialization...');
+    if (initDataUser) {
+      console.log('Init data user available, starting initialization...');
       initializeApp();
     } else {
-      console.log('Launch params not available yet, waiting...');
-      // Set up a watcher for when launch params become available
-      const checkParams = setInterval(() => {
-        console.log('Checking launch params...', {
-          hasTgWebAppData: !!launchParams.tgWebAppData,
-          tgWebAppData: launchParams.tgWebAppData
+      console.log('Init data user not available yet, waiting...');
+      // Set up a watcher for when init data user becomes available
+      const checkInitData = setInterval(() => {
+        console.log('Checking init data user...', {
+          hasInitDataUser: !!initDataUser,
+          initDataUser: initDataUser
         });
         
-        if (launchParams.tgWebAppData) {
-          console.log('Launch params now available, starting initialization...');
-          clearInterval(checkParams);
+        if (initDataUser) {
+          console.log('Init data user now available, starting initialization...');
+          clearInterval(checkInitData);
           initializeApp();
         }
       }, 500);
       
       // Cleanup after 10 seconds
       setTimeout(() => {
-        clearInterval(checkParams);
-        if (!launchParams.tgWebAppData) {
-          console.error('Launch params not available after timeout');
-          setError('Не удалось получить данные Telegram WebApp');
+        clearInterval(checkInitData);
+        if (!initDataUser) {
+          console.error('Init data user not available after timeout');
+          setError('Не удалось получить данные пользователя');
           setIsLoading(false);
         }
       }, 10000);
     }
-  }, [isTelegram, initDataUser, launchParams.tgWebAppData]);
+  }, [isTelegram, initDataUser]);
 
   const handleGameSelect = (gameId: string) => {
     setSelectedGame(gameId);

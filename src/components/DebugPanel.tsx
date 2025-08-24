@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { initData, useSignal, useLaunchParams } from '@telegram-apps/sdk-react';
+import { useState } from 'react';
+import { initData, useSignal, retrieveRawInitData } from '@telegram-apps/sdk-react';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 
 export default function DebugPanel() {
   const [isVisible, setIsVisible] = useState(false);
   const initDataUser = useSignal(initData.user);
-  const launchParams = useLaunchParams();
 
   const toggleVisibility = () => {
     setIsVisible(!isVisible);
@@ -38,15 +37,9 @@ export default function DebugPanel() {
         </Cell>
       </Section>
 
-      <Section header="Launch Params">
-        <Cell subtitle="tgWebAppData">
-          {launchParams.tgWebAppData ? 'Available' : 'Not available'}
-        </Cell>
-        <Cell subtitle="tgWebAppVersion">
-          {launchParams.tgWebAppVersion || 'N/A'}
-        </Cell>
-        <Cell subtitle="tgWebAppPlatform">
-          {launchParams.tgWebAppPlatform || 'N/A'}
+      <Section header="Raw Init Data">
+        <Cell subtitle="Raw init data string">
+          {retrieveRawInitData() || 'Not available'}
         </Cell>
       </Section>
 
@@ -63,7 +56,7 @@ export default function DebugPanel() {
         onClick={() => {
           console.log('=== Debug Info ===');
           console.log('Init Data User:', initDataUser);
-          console.log('Launch Params:', launchParams);
+          console.log('Raw Init Data:', retrieveRawInitData());
           console.log('Window Location:', window.location.href);
         }}
         className="w-full mt-2"
