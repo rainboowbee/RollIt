@@ -223,29 +223,45 @@ export default function Home() {
     );
   }
 
+  // Основной UI
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-6 max-w-md">
-        <Section header="🎰 RollIt - Мини-игра в рулетку">
-          <Cell subtitle="Делайте ставки и выигрывайте призы!">
-            Добро пожаловать в игру
-          </Cell>
-        </Section>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="container mx-auto px-4 py-8 max-w-md">
+        {/* Header с красивым дизайном */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4 shadow-lg">
+            <span className="text-3xl">🎰</span>
+          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            RollIt
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 text-sm">
+            Увлекательная мини-игра в рулетку
+          </p>
+        </div>
 
+        {/* User Profile с улучшенным дизайном */}
         {user && (
-          <Section header="Ваш профиль">
+          <div className="mb-6">
             <UserProfile user={user} />
-          </Section>
+          </div>
         )}
 
         {/* Game Content */}
         {selectedGame === 'roulette' && currentGame ? (
-          <div>
-            <Section header="Игра в рулетку">
-              <Button onClick={handleBackToGames} className="mb-4">
-                ← Назад к играм
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                🎰 Игра в рулетку
+              </h2>
+              <Button 
+                onClick={handleBackToGames} 
+                className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
+                size="s"
+              >
+                ← Назад
               </Button>
-            </Section>
+            </div>
             <RouletteGame
               game={currentGame}
               currentUser={user!}
